@@ -21,12 +21,12 @@ graph_name: str = "Tlr9"
 label_y: str = "Relative gene expression"  # mmol/g  Alpha-diversity index: Chao1
 # Si esta True los valores del eje y son max_graph y min_graph, el intervalo interval_graph, si es False se pone automatico
 legend_graph = True
-max_graph = 40.01
-min_graph = -0.0
-interval_graph = 5
-path: str = "C:/Users/jr_69/OneDrive - URV/Escritorio/2023/Microbiota/PCRs/CAF/"
+max_graph = 200000.0
+min_graph = 0.0
+interval_graph = 40000
+path: str = "/Users/mateosolizrueda/Desktop/asdasdasdasd/"
 # metabolomica/graficas individuales/  C:/Users/jr_69/OneDrive - URV/Escritorio/2023/Microbiota/PCRs/
-file: str = "Tlr9_colon_CH.xlsx"
+file: str = "Bacteroidota_CAF_CH.xlsx"
 
 
 # Modelo cosinor estándar
@@ -66,8 +66,19 @@ with open(output_file, "w") as file:
 # Inicializar figura
 fig, ax1 = plt.subplots()
 
+# Después de cargar los datos
+print("1. Datos cargados desde Excel")
+
+# Antes del bucle principal
+print("2. Iniciando procesamiento de grupos experimentales")
+
 # Iterar sobre cada grupo experimental
 for group, color, ls1, point in zip(data.columns[1:], colors, ls, point_graph):
+    print(f"3. Procesando grupo: {group}")
+    
+    # Antes del ajuste del modelo
+    print(f"   - Intentando ajustar modelo para {group}")
+    
     data1 = data.dropna(subset=[group])
     t = data1['Time point']
     y = data1[group]
@@ -81,8 +92,9 @@ for group, color, ls1, point in zip(data.columns[1:], colors, ls, point_graph):
         y_pred_full = model_func(t, *params_full)
         sse_full = np.sum((y - y_pred_full) ** 2)
         df_full = len(y) - len(params_full)
+        print(f"   - Modelo ajustado exitosamente para {group}")
     except RuntimeError:
-        print(f"Fit did not converge for group {group}")
+        print(f"   - Error: El ajuste no convergió para {group}")
         continue
 
     # Ajustar modelo reducido
@@ -116,6 +128,9 @@ for group, color, ls1, point in zip(data.columns[1:], colors, ls, point_graph):
         file.write(f"F-Statistic: {f_stat:.2f}\n")
         file.write(f"P-value (F-test): {p_value_f:.4f}\n")
         file.write("-" * 50 + "\n\n")
+
+    # Antes de graficar
+    print(f"   - Generando gráficos para {group}")
 
     # Graficar puntos individuales
     ax1.plot(t, y, color=color, marker=point, markersize=5, linewidth=0, label=None)
@@ -165,6 +180,10 @@ with open(output_file, "a") as f:
                     f.write(f"  {g1} vs {g2}: U={U:.2f}, p={p:.4f}\n")
         f.write("\n")
 
+# Antes de personalizar la gráfica
+print("--------------------------------")
+print("--------------------------------")
+print("5. Personalizando gráfica final")
 # Personalizar gráfica
 # plt.title(title + graph_name, fontsize=18)
 plt.title(title + '$\\mathit{' + graph_name + '}$', fontsize=18)
@@ -181,6 +200,11 @@ if legend_graph:
 
 fig.set_size_inches(7, 5)
 
+# Antes de guardar
+print("6. Guardando resultados y gráfica")
+
 # Guardar y mostrar gráfica
 plt.savefig(path + graph_name + iqr_name + ".png", format='png', dpi=300, bbox_inches='tight', transparent=True)
 plt.show()
+
+
