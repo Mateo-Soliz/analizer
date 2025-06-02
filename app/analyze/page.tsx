@@ -1,4 +1,5 @@
 "use client";
+import AnalysisTable from "@/components/AnalysisTable";
 import AnalyzeIntro from "@/components/AnalyzeIntro";
 import FileDropZone from "@/components/FileDropZone";
 import Footer from "@/components/footer/footer";
@@ -133,6 +134,25 @@ export default function AnalyzePage() {
     }
   };
 
+  const getTableData = (analysisResults: any) => {
+    if (!analysisResults?.circadian_analysis) return [];
+    return Object.entries(analysisResults.circadian_analysis).map(
+      ([group, values]: [string, any]) => ({
+        group,
+        mesor: values.mesor,
+        amplitude: values.amplitude,
+        acrophase: values.acrophase,
+        acrophase_rad: values.acrophase_rad,
+        peak_time: values.peak_time,
+        mse: values.mse,
+        r2: values.r2,
+        chi2: values.chi2,
+        f_statistic: values.f_statistic,
+        p_value: values.p_value,
+      })
+    );
+  };
+
   return (
     <div className="bg-white flex flex-col min-h-screen">
       <main className="flex-1 p-4 md:p-8 bg-gray-50">
@@ -170,7 +190,12 @@ export default function AnalyzePage() {
             </p>
           </div>
         )}
-        {plotData && <Graph data={plotData} />}
+        {plotData && (
+          <>
+            <Graph data={plotData} />
+            <AnalysisTable data={getTableData(JSON.parse(localStorage.getItem("analysisResults") || "{}"))} />
+          </>
+        )}
       </main>
       <Footer />
     </div>
