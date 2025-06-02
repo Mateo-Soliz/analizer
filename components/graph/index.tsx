@@ -22,6 +22,7 @@ interface PlotData {
 
 interface GraphProps {
   data: PlotData;
+  fileName: string;
 }
 
 const colores = [
@@ -35,7 +36,7 @@ const colores = [
   "rgba(0, 0, 0, 0.8)",
 ];
 
-const Graph = ({ data: initialData }: GraphProps) => {
+const Graph = ({ data: initialData, fileName }: GraphProps) => {
   const [plotData, setPlotData] = useState<PlotData | null>(initialData);
   const [error, setError] = useState<string | null>(null);
 
@@ -121,7 +122,7 @@ const Graph = ({ data: initialData }: GraphProps) => {
       },
       title: {
         display: true,
-        text: "Oscilación circadiana (Scatter + Ajuste)",
+        text: `Oscilación circadiana de ${fileName.split("_")[0]}`,
         font: {
           size: 16,
           weight: 'bold'
@@ -172,7 +173,7 @@ const Graph = ({ data: initialData }: GraphProps) => {
         }
       }
     }
-  }), []);
+  }), [fileName]);
 
   if (error) {
     return (

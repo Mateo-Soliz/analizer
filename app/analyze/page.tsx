@@ -192,7 +192,7 @@ export default function AnalyzePage() {
         )}
         {plotData && (
           <>
-            <Graph data={plotData} />
+            <Graph data={plotData} fileName={fileName} />
             <AnalysisTable data={getTableData(JSON.parse(localStorage.getItem("analysisResults") || "{}"))} />
           </>
         )}

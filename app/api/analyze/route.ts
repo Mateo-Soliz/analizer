@@ -119,12 +119,15 @@ for group in data['groups']:
         acrophase_rad = np.arctan2(c, b)
         acrophase_hours = (acrophase_rad * 24 / (2 * np.pi)) % 24
 
+        # Calcular MSE, R2 y Chi2
+        mse = np.mean((y - y_pred_full) ** 2)
+        ss_tot = np.sum((y - np.mean(y)) ** 2)
+        r2 = 1 - sse_full / ss_tot if ss_tot != 0 else float('nan')
+        chi2 = np.sum((y - y_pred_full) ** 2 / (y_pred_full + 1e-8))  # evitar división por cero
+
         # Tiempo del máximo y curva ajustada
-        print("params_full", params_full)
         t_fine = np.linspace(0, 24, 1000)
-        print("t_fine", t_fine)
         y_fit = model_func(t_fine, *params_full)
-        print("y_fit", y_fit)
         peak_time = t_fine[np.argmax(y_fit)]
 
         # Guardar datos para la gráfica
@@ -138,7 +141,11 @@ for group in data['groups']:
             'mesor': float(mesor),
             'amplitude': float(amplitude),
             'acrophase': float(acrophase_hours),
+            'acrophase_rad': float(acrophase_rad),
             'peak_time': float(peak_time),
+            'mse': float(mse),
+            'r2': float(r2),
+            'chi2': float(chi2),
             'f_statistic': float(f_stat),
             'p_value': float(p_value_f),
             'is_significant': bool(p_value_f < no_significant),
