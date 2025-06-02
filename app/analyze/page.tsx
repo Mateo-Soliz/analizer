@@ -14,24 +14,26 @@ export default function AnalyzePage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [uploadProgress, setUploadProgress] = useState<{
-    step: 'upload' | 'analysis' | null;
+    step: "upload" | "analysis" | null;
     message: string;
-  }>({ step: null, message: '' });
+  }>({ step: null, message: "" });
 
   const validateExcelFile = (file: File): boolean => {
     // Validar extensión
-    const validExtensions = ['.xlsx', '.xls'];
-    const fileExtension = file.name.toLowerCase().slice(file.name.lastIndexOf('.'));
-    
+    const validExtensions = [".xlsx", ".xls"];
+    const fileExtension = file.name
+      .toLowerCase()
+      .slice(file.name.lastIndexOf("."));
+
     if (!validExtensions.includes(fileExtension)) {
-      setError('El archivo debe ser un Excel (.xlsx o .xls)');
+      setError("El archivo debe ser un Excel (.xlsx o .xls)");
       return false;
     }
 
     // Validar tamaño (por ejemplo, máximo 10MB)
     const maxSize = 10 * 1024 * 1024; // 10MB en bytes
     if (file.size > maxSize) {
-      setError('El archivo es demasiado grande. Tamaño máximo: 10MB');
+      setError("El archivo es demasiado grande. Tamaño máximo: 10MB");
       return false;
     }
 
@@ -46,7 +48,7 @@ export default function AnalyzePage() {
         setFileName(file.name);
         setError(null);
       } else {
-        e.target.value = ''; // Limpiar el input
+        e.target.value = ""; // Limpiar el input
         setSelectedFile(null);
         setFileName("");
       }
@@ -61,7 +63,7 @@ export default function AnalyzePage() {
 
     setIsLoading(true);
     setError(null);
-    setUploadProgress({ step: 'upload', message: 'Subiendo archivo...' });
+    setUploadProgress({ step: "upload", message: "Subiendo archivo..." });
 
     try {
       // 1. Subir el archivo
@@ -72,7 +74,7 @@ export default function AnalyzePage() {
         method: "POST",
         body: formData,
       });
-
+      console.log("uploadResponse", JSON.stringify(uploadResponse, null, 2));
       const uploadData = await uploadResponse.json();
 
       if (!uploadResponse.ok) {
@@ -80,11 +82,16 @@ export default function AnalyzePage() {
       }
 
       // Validar estructura de datos recibida
-      if (!uploadData.data || !uploadData.data.timePoints || !uploadData.data.groups || !uploadData.data.values) {
+      if (
+        !uploadData.data ||
+        !uploadData.data.timePoints ||
+        !uploadData.data.groups ||
+        !uploadData.data.values
+      ) {
         throw new Error("El archivo no tiene el formato esperado");
       }
 
-      setUploadProgress({ step: 'analysis', message: 'Analizando datos...' });
+      setUploadProgress({ step: "analysis", message: "Analizando datos..." });
 
       // 2. Analizar los datos
       const analyzeResponse = await fetch("/api/analyze", {
@@ -102,8 +109,13 @@ export default function AnalyzePage() {
       }
 
       // Validar resultados del análisis
-      if (!analysisResults.circadian_analysis || !analysisResults.mann_whitney_tests) {
-        throw new Error("Los resultados del análisis no tienen el formato esperado");
+      if (
+        !analysisResults.circadian_analysis ||
+        !analysisResults.mann_whitney_tests
+      ) {
+        throw new Error(
+          "Los resultados del análisis no tienen el formato esperado"
+        );
       }
 
       // 3. Guardar resultados
@@ -112,13 +124,12 @@ export default function AnalyzePage() {
 
       // 4. Redirigir a la página de resultados
       setPlotData(analysisResults.plot_data);
-
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error desconocido");
       console.error("Error en el proceso:", err);
     } finally {
       setIsLoading(false);
-      setUploadProgress({ step: null, message: '' });
+      setUploadProgress({ step: null, message: "" });
     }
   };
 
@@ -133,7 +144,7 @@ export default function AnalyzePage() {
           handleProcess={handleProcess}
           isLoading={isLoading}
         />
-        
+
         {/* Mostrar progreso */}
         {isLoading && uploadProgress.step && (
           <div className="mt-4 p-4 bg-blue-100 text-blue-700 rounded-md">

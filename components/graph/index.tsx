@@ -189,7 +189,7 @@ const Graph = ({ data: initialData }: GraphProps) => {
       </div>
     );
   }
-
+  console.log("chartData", JSON.stringify(initialData, null, 2));
   return (
     <div className="w-full h-[500px] p-4 bg-white rounded-lg shadow-lg">
       <Scatter data={chartData} options={options} />

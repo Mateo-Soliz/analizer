@@ -29,8 +29,8 @@ from scipy.optimize import curve_fit
 from scipy.stats import f, iqr, mannwhitneyu
 
 # Cargar datos
-with open('${tempDataPath}', 'r') as f:
-    data = json.load(f)
+with open('${tempDataPath}', 'r') as file:
+    data = json.load(file)
 
 # Convertir a DataFrame
 df = pd.DataFrame({
@@ -120,15 +120,18 @@ for group in data['groups']:
         acrophase_hours = (acrophase_rad * 24 / (2 * np.pi)) % 24
 
         # Tiempo del máximo y curva ajustada
+        print("params_full", params_full)
         t_fine = np.linspace(0, 24, 1000)
+        print("t_fine", t_fine)
         y_fit = model_func(t_fine, *params_full)
+        print("y_fit", y_fit)
         peak_time = t_fine[np.argmax(y_fit)]
 
         # Guardar datos para la gráfica
         plot_data['groups'][group]['fitted_curve'] = {
             'time_points': t_fine.tolist(),
             'values': y_fit.tolist(),
-            'is_significant': p_value_f < no_significant
+            'is_significant': bool(p_value_f < no_significant)
         }
 
         results[group] = {
@@ -138,11 +141,12 @@ for group in data['groups']:
             'peak_time': float(peak_time),
             'f_statistic': float(f_stat),
             'p_value': float(p_value_f),
-            'is_significant': p_value_f < no_significant,
+            'is_significant': bool(p_value_f < no_significant),
             'model_type': 'extended' if use_extended_model else 'standard'
         }
 
     except Exception as e:
+        print("Error en el ajuste del modelo:", e)
         results[group] = {'error': str(e)}
         plot_data['groups'][group]['fitted_curve'] = None
 
