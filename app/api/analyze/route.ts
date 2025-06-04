@@ -1,279 +1,277 @@
-import { spawn } from 'child_process';
-import fs from 'fs';
+import { levenbergMarquardt } from 'ml-levenberg-marquardt';
 import { NextResponse } from 'next/server';
-import path from 'path';
+import * as ss from 'simple-statistics';
+
+// Modelos matemáticos
+function circadianModel(t: number, a: number, b: number, c: number) {
+  return a + b * Math.sin((2 * Math.PI * t) / 24) + c * Math.cos((2 * Math.PI * t) / 24);
+}
+
+function extendedSinusoidalModel(t: number, a: number, b: number, c: number, d: number) {
+  return a + (b * Math.sin((2 * Math.PI * t) / 24) + c * Math.cos((2 * Math.PI * t) / 24)) / (1 - d * Math.sin((2 * Math.PI * t) / 24));
+}
+
+function reducedModel(t: number, a: number) {
+  return a;
+}
+
+// Mann-Whitney U test (implementación manual)
+function mannWhitneyU(x: number[], y: number[]) {
+  const all = x.concat(y).sort((a, b) => a - b);
+  const ranks = all.map((v, i) => ({ v, r: i + 1 }));
+  const rankMap = new Map<number, number>();
+  for (const { v, r } of ranks) {
+    if (!rankMap.has(v)) rankMap.set(v, r);
+  }
+  const rankX = x.map(v => rankMap.get(v) || 0);
+  const rankY = y.map(v => rankMap.get(v) || 0);
+  const U1 = ss.sum(rankX) - (x.length * (x.length + 1)) / 2;
+  const U2 = ss.sum(rankY) - (y.length * (y.length + 1)) / 2;
+  const U = Math.min(U1, U2);
+  const n1 = x.length, n2 = y.length;
+  const mu = (n1 * n2) / 2;
+  const sigma = Math.sqrt((n1 * n2 * (n1 + n2 + 1)) / 12);
+  const z = (U - mu) / sigma;
+  const p = 2 * (1 - ss.cumulativeStdNormalProbability(Math.abs(z)));
+  return { U, p };
+}
+
+// Utilidades estadísticas
+function iqr(arr: number[]) {
+  return ss.quantileSorted(arr.slice().sort((a, b) => a - b), 0.75) - ss.quantileSorted(arr.slice().sort((a, b) => a - b), 0.25);
+}
+
+// Función beta regularizada incompleta
+function ibeta(x: number, a: number, b: number): number {
+  let bt = (x === 0 || x === 1) ? 0 :
+    Math.exp(
+      lgamma(a + b) - lgamma(a) - lgamma(b) +
+      a * Math.log(x) + b * Math.log(1 - x)
+    );
+  if (x < 0 || x > 1) return 0;
+  if (x < (a + 1) / (a + b + 2)) {
+    return bt * betacf(x, a, b) / a;
+  } else {
+    return 1 - bt * betacf(1 - x, b, a) / b;
+  }
+}
+function betacf(x: number, a: number, b: number): number {
+  let m2, aa, c, d, del, h, qab, qam, qap;
+  let MAXIT = 100, EPS = 3.0e-7, FPMIN = 1.0e-30;
+  qab = a + b;
+  qap = a + 1.0;
+  qam = a - 1.0;
+  c = 1.0;
+  d = 1.0 - qab * x / qap;
+  if (Math.abs(d) < FPMIN) d = FPMIN;
+  d = 1.0 / d;
+  h = d;
+  for (let m = 1; m <= MAXIT; m++) {
+    m2 = 2 * m;
+    aa = m * (b - m) * x / ((qam + m2) * (a + m2));
+    d = 1.0 + aa * d;
+    if (Math.abs(d) < FPMIN) d = FPMIN;
+    c = 1.0 + aa / c;
+    if (Math.abs(c) < FPMIN) c = FPMIN;
+    d = 1.0 / d;
+    h *= d * c;
+    aa = -(a + m) * (qab + m) * x / ((a + m2) * (qap + m2));
+    d = 1.0 + aa * d;
+    if (Math.abs(d) < FPMIN) d = FPMIN;
+    c = 1.0 + aa / c;
+    if (Math.abs(c) < FPMIN) c = FPMIN;
+    d = 1.0 / d;
+    del = d * c;
+    h *= del;
+    if (Math.abs(del - 1.0) < EPS) break;
+  }
+  return h;
+}
+function lgamma(z: number): number {
+  const g = 7;
+  const p = [
+    0.99999999999980993, 676.5203681218851, -1259.1392167224028,
+    771.32342877765313, -176.61502916214059, 12.507343278686905,
+    -0.13857109526572012, 9.9843695780195716e-6, 1.5056327351493116e-7
+  ];
+  if (z < 0.5) return Math.log(Math.PI) - Math.log(Math.sin(Math.PI * z)) - lgamma(1 - z);
+  z -= 1;
+  let x = p[0];
+  for (let i = 1; i < g + 2; i++) x += p[i] / (z + i);
+  let t = z + g + 0.5;
+  return 0.5 * Math.log(2 * Math.PI) + (z + 0.5) * Math.log(t) - t + Math.log(x) - Math.log(z + 1);
+}
+function fCDF(x: number, d1: number, d2: number): number {
+  if (x < 0) return 0;
+  const xx = (d1 * x) / (d1 * x + d2);
+  return ibeta(xx, d1 / 2, d2 / 2);
+}
 
 export async function POST(request: Request) {
   try {
     const data = await request.json();
-    console.log(JSON.stringify(data, null, 2));
-    // Validar los datos recibidos
     if (!data.timePoints || !data.groups || !data.values) {
       return NextResponse.json(
         { error: 'Datos incompletos. Se requieren timePoints, groups y values' },
         { status: 400 }
       );
     }
-    console.log("Datos validados");
-    // Crear un archivo temporal con los datos
-    const tempDataPath = path.join(process.cwd(), 'temp_data.json');
-    fs.writeFileSync(tempDataPath, JSON.stringify(data));
-    console.log("Archivo temporal creado");
-    // Crear script Python para el análisis circadiano
-    const scriptPath = path.join(process.cwd(), 'temp_analyzer.py');
-    const scriptContent = `
-import json
-import numpy as np
-import pandas as pd
-from scipy.optimize import curve_fit
-from scipy.stats import f, iqr, mannwhitneyu
 
-# Cargar datos
-with open('${tempDataPath}', 'r') as file:
-    data = json.load(file)
+    const timePoints: number[] = data.timePoints;
+    const groups: string[] = data.groups;
+    const values: number[][] = data.values;
+    const useExtendedModel = !!data.useExtendedModel;
+    const noSignificant = data.noSignificant || 0.999;
 
-# Convertir a DataFrame
-df = pd.DataFrame({
-    'Time point': data['timePoints'],
-    **{group: values for group, values in zip(data['groups'], data['values'])}
-})
-
-# Configuración
-use_extended_model = ${data.useExtendedModel ? 'True' : 'False'}
-no_significant = ${data.noSignificant || 0.999}
-use_median_iqr = ${data.useMedianIqr ? 'True' : 'False'}
-
-# Modelos
-def circadian_model(t, a, b, c):
-    return a + b * np.sin(2 * np.pi * t / 24) + c * np.cos(2 * np.pi * t / 24)
-
-def extended_sinusoidal_model(t, a, b, c, d):
-    return a + (b * np.sin(2 * np.pi * t / 24) + c * np.cos(2 * np.pi * t / 24)) / (1 - d * np.sin(2 * np.pi * t / 24))
-
-def reduced_model(t, a):
-    return a
-
-def f_test(sse_reduced, sse_full, df_reduced, df_full):
-    num = (sse_reduced - sse_full) / (df_reduced - df_full)
-    denom = sse_full / df_full
-    f_stat = num / denom
-    p_value = 1 - f.cdf(f_stat, df_reduced - df_full, df_full)
-    return f_stat, p_value
-
-# Análisis
-results = {}
-mann_whitney_results = {}
-plot_data = {
-    'time_points': np.linspace(0, 24, 1000).tolist(),
-    'groups': {}
-}
-
-# Análisis por grupo
-for group in data['groups']:
-    data1 = df.dropna(subset=[group])
-    t = data1['Time point']
-    y = data1[group]
-
-    # Calcular estadísticas descriptivas
-    stats = data1.groupby('Time point')[group].agg(
-        median='median',
-        iqr=lambda x: iqr(x, nan_policy='omit')
-    ).reset_index()
-
-    plot_data['groups'][group] = {
-        'raw_data': {
-            'time_points': t.tolist(),
-            'values': y.tolist()
-        },
-        'descriptive_stats': {
-            'time_points': stats['Time point'].tolist(),
-            'medians': stats['median'].tolist(),
-            'iqr': stats['iqr'].tolist()
-        }
-    }
-
-    try:
-        # Seleccionar modelo
-        model_func = extended_sinusoidal_model if use_extended_model else circadian_model
-        initial_params = [np.mean(y), 1, 1, 0.1] if use_extended_model else [np.mean(y), 1, 1]
-
-        # Ajuste del modelo completo
-        params_full, _ = curve_fit(model_func, t, y, p0=initial_params, maxfev=10000)
-        y_pred_full = model_func(t, *params_full)
-        sse_full = np.sum((y - y_pred_full) ** 2)
-        df_full = len(y) - len(params_full)
-
-        # Ajuste del modelo reducido
-        params_reduced, _ = curve_fit(reduced_model, t, y, p0=[np.mean(y)])
-        y_pred_reduced = reduced_model(t, *params_reduced)
-        sse_reduced = np.sum((y - y_pred_reduced) ** 2)
-        df_reduced = len(y) - len(params_reduced)
-
-        # F-test
-        f_stat, p_value_f = f_test(sse_reduced, sse_full, df_reduced, df_full)
-
-        # Cálculo de parámetros
-        a, b, c, *d = params_full
-        mesor = a
-        amplitude = np.sqrt(b ** 2 + c ** 2)
-        acrophase_rad = np.arctan2(c, b)
-        acrophase_hours = (acrophase_rad * 24 / (2 * np.pi)) % 24
-
-        # Calcular MSE, R2 y Chi2
-        mse = np.mean((y - y_pred_full) ** 2)
-        ss_tot = np.sum((y - np.mean(y)) ** 2)
-        r2 = 1 - sse_full / ss_tot if ss_tot != 0 else float('nan')
-        chi2 = np.sum((y - y_pred_full) ** 2 / (y_pred_full + 1e-8))  # evitar división por cero
-
-        # Tiempo del máximo y curva ajustada
-        t_fine = np.linspace(0, 24, 1000)
-        y_fit = model_func(t_fine, *params_full)
-        peak_time = t_fine[np.argmax(y_fit)]
-
-        # Guardar datos para la gráfica
-        plot_data['groups'][group]['fitted_curve'] = {
-            'time_points': t_fine.tolist(),
-            'values': y_fit.tolist(),
-            'is_significant': bool(p_value_f < no_significant)
-        }
-
-        results[group] = {
-            'mesor': float(mesor),
-            'amplitude': float(amplitude),
-            'acrophase': float(acrophase_hours),
-            'acrophase_rad': float(acrophase_rad),
-            'peak_time': float(peak_time),
-            'mse': float(mse),
-            'r2': float(r2),
-            'chi2': float(chi2),
-            'f_statistic': float(f_stat),
-            'p_value': float(p_value_f),
-            'is_significant': bool(p_value_f < no_significant),
-            'model_type': 'extended' if use_extended_model else 'standard'
-        }
-
-    except Exception as e:
-        console.log("Error en el ajuste del modelo:", e);
-        results[group] = {'error': str(e)}
-        plot_data['groups'][group]['fitted_curve'] = None
-
-# Análisis Mann-Whitney
-for tp in sorted(df['Time point'].unique()):
-    mann_whitney_results[str(tp)] = {}
-    for i in range(len(data['groups'])):
-        for j in range(i+1, len(data['groups'])):
-            g1 = data['groups'][i]
-            g2 = data['groups'][j]
-            x = df.loc[df['Time point'] == tp, g1].dropna()
-            y = df.loc[df['Time point'] == tp, g2].dropna()
-            
-            if len(x) > 0 and len(y) > 0:
-                try:
-                    U, p = mannwhitneyu(x, y, alternative='two-sided')
-                    mann_whitney_results[str(tp)][f"{g1}_vs_{g2}"] = {
-                        'U_statistic': float(U),
-                        'p_value': float(p)
-                    }
-                except Exception as e:
-                    mann_whitney_results[str(tp)][f"{g1}_vs_{g2}"] = {
-                        'error': str(e)
-                    }
-
-# Guardar resultados
-output = {
-    'circadian_analysis': results,
-    'mann_whitney_tests': mann_whitney_results,
-    'plot_data': plot_data
-}
-
-# Escribir resultados
-with open('${tempDataPath}_results.json', 'w') as f:
-    json.dump(output, f)
-`;
-
-    fs.writeFileSync(scriptPath, scriptContent);
-    console.log("Script Python creado");
-    // Ejecutar el script Python
-    return await new Promise<Response>((resolve, reject) => {
-      const pythonProcess = spawn('python3', [scriptPath]);
-      console.log("Script Python ejecutado");
-      
-      let pythonError = '';
-
-      // Capturar la salida estándar
-      pythonProcess.stdout.on('data', (data) => {
-        console.log('Python stdout:', data.toString());
+    const df: any[] = timePoints.map((tp, i) => {
+      const row: any = { 'Time point': tp };
+      groups.forEach((g, j) => {
+        row[g] = values[j][i];
       });
-
-      // Capturar la salida de error
-      pythonProcess.stderr.on('data', (data) => {
-        pythonError += data.toString();
-        console.log('Python stderr:', data.toString());
-      });
-
-      pythonProcess.on('close', (code) => {
-        try {
-          // Limpiar archivos temporales
-          fs.unlinkSync(scriptPath);
-          console.log("Archivos temporales eliminados");
-          
-          if (code !== 0) {
-            console.log("Error en el script Python:", pythonError);
-            throw new Error(`Error en el script Python: ${pythonError}`);
-          }
-
-          const resultsPath = `${tempDataPath}_results.json`;
-          console.log("Archivo temporal de resultados creado");
-          
-          if (!fs.existsSync(resultsPath)) {
-            console.log("No se encontró el archivo de resultados");
-            throw new Error("No se generó el archivo de resultados");
-          }
-
-          console.log("Archivo temporal de resultados leido");
-          const results = JSON.parse(fs.readFileSync(resultsPath, 'utf-8'));
-          fs.unlinkSync(resultsPath);
-          fs.unlinkSync(tempDataPath);
-          console.log("Archivo temporal de resultados eliminado");
-          resolve(NextResponse.json(results));
-        } catch (e) {
-          const errorMsg = e instanceof Error ? e.message : String(e);
-          console.log("Error interno al procesar los resultados:", e);
-          // Limpiar archivos temporales en caso de error
-          try {
-            if (fs.existsSync(tempDataPath)) fs.unlinkSync(tempDataPath);
-            if (fs.existsSync(`${tempDataPath}_results.json`)) fs.unlinkSync(`${tempDataPath}_results.json`);
-          } catch (cleanupError) {
-            console.log("Error al limpiar archivos temporales:", cleanupError);
-          }
-          resolve(NextResponse.json(
-            { error: `Error interno al procesar los resultados: ${errorMsg}` },
-            { status: 500 }
-          ));
-        }
-      });
-
-      pythonProcess.on('error', (err) => {
-        console.log("Error al ejecutar Python:", err);
-        // Limpiar archivos temporales
-        try {
-          if (fs.existsSync(tempDataPath)) fs.unlinkSync(tempDataPath);
-          if (fs.existsSync(scriptPath)) fs.unlinkSync(scriptPath);
-        } catch (cleanupError) {
-          console.log("Error al limpiar archivos temporales:", cleanupError);
-        }
-        
-        reject(NextResponse.json(
-          { error: `Error al ejecutar Python: ${err.message}` },
-          { status: 500 }
-        ));
-      });
+      return row;
     });
 
-  } catch (error) {
-    console.error('Error:', error);
+    const results: any = {};
+    const plotData: any = {
+      time_points: Array.from({ length: 1000 }, (_, i) => (i * 24) / 999),
+      groups: {}
+    };
+
+    for (let gi = 0; gi < groups.length; gi++) {
+      const group = groups[gi];
+      const t: number[] = [];
+      const y: number[] = [];
+      for (let i = 0; i < df.length; i++) {
+        const v = df[i][group];
+        if (v !== null && v !== undefined && !isNaN(v)) {
+          t.push(df[i]['Time point']);
+          y.push(v);
+        }
+      }
+      const statsMap = new Map<number, number[]>();
+      for (let i = 0; i < t.length; i++) {
+        if (!statsMap.has(t[i])) statsMap.set(t[i], []);
+        statsMap.get(t[i])!.push(y[i]);
+      }
+      const stats = Array.from(statsMap.entries()).map(([tp, arr]) => ({
+        timePoint: tp,
+        median: ss.median(arr),
+        iqr: iqr(arr)
+      }));
+      plotData.groups[group] = {
+        raw_data: {
+          time_points: t,
+          values: y
+        },
+        descriptive_stats: {
+          time_points: stats.map(s => s.timePoint),
+          medians: stats.map(s => s.median),
+          iqr: stats.map(s => s.iqr)
+        }
+      };
+      let modelFunc: any, initialParams: number[], paramCount: number;
+      if (useExtendedModel) {
+        modelFunc = (params: number[]) => (t: number) => extendedSinusoidalModel(t, params[0], params[1], params[2], params[3]);
+        initialParams = [ss.mean(y), 1, 1, 0.1];
+        paramCount = 4;
+      } else {
+        modelFunc = (params: number[]) => (t: number) => circadianModel(t, params[0], params[1], params[2]);
+        initialParams = [ss.mean(y), 1, 1];
+        paramCount = 3;
+      }
+      let paramsFull: number[] = initialParams;
+      let yPredFull: number[] = [];
+      let sseFull = 0, dfFull = 0;
+      try {
+        const fit = levenbergMarquardt({
+          x: t,
+          y: y,
+        }, modelFunc, {
+          initialValues: initialParams,
+          damping: 1.5,
+          gradientDifference: 1e-2,
+          maxIterations: 100,
+          errorTolerance: 1e-3
+        });
+        paramsFull = fit.parameterValues;
+        yPredFull = t.map(tt => modelFunc(paramsFull)(tt));
+        sseFull = ss.sum(y.map((v, i) => Math.pow(v - yPredFull[i], 2)));
+        dfFull = y.length - paramCount;
+      } catch (e) {
+        results[group] = { error: 'No se pudo ajustar el modelo completo' };
+        plotData.groups[group].fitted_curve = null;
+        continue;
+      }
+      let paramsReduced: number[] = [ss.mean(y)];
+      let yPredReduced: number[] = t.map(() => paramsReduced[0]);
+      let sseReduced = ss.sum(y.map((v, i) => Math.pow(v - yPredReduced[i], 2)));
+      let dfReduced = y.length - 1;
+      const num = (sseReduced - sseFull) / (dfReduced - dfFull);
+      const denom = sseFull / dfFull;
+      const fStat = num / denom;
+      const pValueF = 1 - fCDF(fStat, dfReduced - dfFull, dfFull);
+      const a = paramsFull[0], b = paramsFull[1], c = paramsFull[2], d = paramsFull[3] || 0;
+      const mesor = a;
+      const amplitude = Math.sqrt(b ** 2 + c ** 2);
+      const acrophaseRad = Math.atan2(c, b);
+      const acrophaseHours = ((acrophaseRad * 24) / (2 * Math.PI)) % 24;
+      const mse = ss.mean(y.map((v, i) => Math.pow(v - yPredFull[i], 2)));
+      const ssTot = ss.sum(y.map(v => Math.pow(v - ss.mean(y), 2)));
+      const r2 = 1 - sseFull / ssTot;
+      const chi2 = ss.sum(y.map((v, i) => Math.pow(v - yPredFull[i], 2) / (yPredFull[i] + 1e-8)));
+      const tFine = Array.from({ length: 1000 }, (_, i) => (i * 24) / 999);
+      const yFit = tFine.map(tt => modelFunc(paramsFull)(tt));
+      const peakTime = tFine[yFit.indexOf(Math.max(...yFit))];
+      plotData.groups[group].fitted_curve = {
+        time_points: tFine,
+        values: yFit,
+        is_significant: pValueF < noSignificant
+      };
+      results[group] = {
+        mesor,
+        amplitude,
+        acrophase: acrophaseHours,
+        acrophase_rad: acrophaseRad,
+        peak_time: peakTime,
+        mse,
+        r2,
+        chi2,
+        f_statistic: fStat,
+        p_value: pValueF,
+        is_significant: pValueF < noSignificant,
+        model_type: useExtendedModel ? 'extended' : 'standard'
+      };
+    }
+
+    const mannWhitneyResults: any = {};
+    const uniqueTimePoints = Array.from(new Set(timePoints)).sort((a, b) => a - b);
+    for (const tp of uniqueTimePoints) {
+      mannWhitneyResults[tp] = {};
+      for (let i = 0; i < groups.length; i++) {
+        for (let j = i + 1; j < groups.length; j++) {
+          const g1 = groups[i], g2 = groups[j];
+          const x = df.filter(row => row['Time point'] === tp && row[g1] !== null && row[g1] !== undefined && !isNaN(row[g1])).map(row => row[g1]);
+          const y = df.filter(row => row['Time point'] === tp && row[g2] !== null && row[g2] !== undefined && !isNaN(row[g2])).map(row => row[g2]);
+          if (x.length > 0 && y.length > 0) {
+            try {
+              const { U, p } = mannWhitneyU(x, y);
+              mannWhitneyResults[tp][`${g1}_vs_${g2}`] = { U_statistic: U, p_value: p };
+            } catch (e) {
+              mannWhitneyResults[tp][`${g1}_vs_${g2}`] = { error: 'Error en Mann-Whitney' };
+            }
+          }
+        }
+      }
+    }
+
+    return NextResponse.json({
+      circadian_analysis: results,
+      mann_whitney_tests: mannWhitneyResults,
+      plot_data: plotData
+    });
+  } catch (error: any) {
     return NextResponse.json(
-      { error: 'Error interno del servidor' },
+      { error: 'Error interno del servidor', details: error.message },
       { status: 500 }
     );
   }
