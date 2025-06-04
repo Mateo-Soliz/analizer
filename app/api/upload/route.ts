@@ -1,7 +1,5 @@
-import { spawn } from 'child_process';
-import fs from 'fs';
 import { NextResponse } from 'next/server';
-import path from 'path';
+import * as XLSX from 'xlsx';
 
 export async function POST(request: Request) {
   try {
@@ -23,108 +21,63 @@ export async function POST(request: Request) {
       );
     }
 
-    // Crear directorio temporal si no existe
-    const tempDir = path.join(process.cwd(), 'temp');
-    if (!fs.existsSync(tempDir)) {
-      fs.mkdirSync(tempDir);
-    }
-
-    // Guardar archivo temporalmente
-    const tempPath = path.join(tempDir, file.name);
+    // Leer el archivo en memoria
     const bytes = await file.arrayBuffer();
-    fs.writeFileSync(tempPath, Buffer.from(bytes));
+    const buffer = Buffer.from(bytes);
 
-    // Crear script Python para validar y leer el Excel
-    const scriptPath = path.join(tempDir, 'validate_excel.py');
-    const scriptContent = `
-import pandas as pd
-import json
-import sys
+    // Parsear el archivo Excel
+    const workbook = XLSX.read(buffer, { type: 'buffer' });
+    const sheetName = workbook.SheetNames[0];
+    const sheet = workbook.Sheets[sheetName];
+    const json = XLSX.utils.sheet_to_json(sheet, { defval: null });
 
-try:
-    # Leer archivo Excel
-    df = pd.read_excel('${tempPath}')
-    
-    # Validar estructura del archivo
-    if 'Time point' not in df.columns:
-        print(json.dumps({'error': 'El archivo debe contener una columna "Time point"'}))
-        sys.exit(1)
-        
-    if len(df.columns) < 2:
-        print(json.dumps({'error': 'El archivo debe contener al menos una columna de datos además de "Time point"'}))
-        sys.exit(1)
-    
-    # Validar datos
-    if df['Time point'].isnull().any():
-        print(json.dumps({'error': 'La columna "Time point" no puede contener valores nulos'}))
-        sys.exit(1)
-    
-    # Convertir a formato JSON
-    data = {
-        'timePoints': df['Time point'].tolist(),
-        'groups': [col for col in df.columns if col != 'Time point'],
-        'values': [df[col].tolist() for col in df.columns if col != 'Time point']
+    if (!json.length) {
+      return NextResponse.json(
+        { error: 'El archivo Excel está vacío o no se pudo leer' },
+        { status: 400 }
+      );
     }
-    
-    print(json.dumps({'data': data}))
-    
-except Exception as e:
-    print(json.dumps({'error': f'Error al procesar el archivo: {str(e)}'}))
-    sys.exit(1)
-`;
 
-    fs.writeFileSync(scriptPath, scriptContent);
+    // Validar columnas
+    const columns = Object.keys(json[0]);
+    if (!columns.includes('Time point')) {
+      return NextResponse.json(
+        { error: 'El archivo debe contener una columna \"Time point\"' },
+        { status: 400 }
+      );
+    }
+    if (columns.length < 2) {
+      return NextResponse.json(
+        { error: 'El archivo debe contener al menos una columna de datos además de \"Time point\"' },
+        { status: 400 }
+      );
+    }
 
-    // Ejecutar script Python
-    return await new Promise<Response>((resolve, reject) => {
-      const pythonProcess = spawn('python3', [scriptPath]);
-      let outputData = '';
-      let errorData = '';
+    // Validar datos nulos en Time point
+    for (const row of json) {
+      if (row['Time point'] === null || row['Time point'] === undefined) {
+        return NextResponse.json(
+          { error: 'La columna \"Time point\" no puede contener valores nulos' },
+          { status: 400 }
+        );
+      }
+    }
 
-      pythonProcess.stdout.on('data', (data) => {
-        outputData += data.toString();
-      });
+    // Extraer datos en el formato esperado
+    const timePoints = json.map((row: any) => row['Time point']);
+    const groups = columns.filter(col => col !== 'Time point');
+    const values = groups.map(group => json.map((row: any) => row[group]));
 
-      pythonProcess.stderr.on('data', (data) => {
-        errorData += data.toString();
-      });
-
-      pythonProcess.on('close', (code) => {
-        // Limpiar archivos temporales
-        fs.unlinkSync(tempPath);
-        fs.unlinkSync(scriptPath);
-
-        if (code !== 0) {
-          reject(NextResponse.json(
-            { error: errorData || 'Error al procesar el archivo Excel' },
-            { status: 500 }
-          ));
-          return;
-        }
-
-        try {
-          const result = JSON.parse(outputData);
-          if (result.error) {
-            reject(NextResponse.json(
-              { error: result.error },
-              { status: 400 }
-            ));
-            return;
-          }
-          resolve(NextResponse.json(result));
-        } catch {
-          reject(NextResponse.json(
-            { error: 'Error al procesar la respuesta del script' },
-            { status: 500 }
-          ));
-        }
-      });
+    return NextResponse.json({
+      data: {
+        timePoints,
+        groups,
+        values
+      }
     });
-
-  } catch (error) {
-    console.error('Error:', error);
+  } catch (error: any) {
     return NextResponse.json(
-      { error: 'Error interno del servidor' },
+      { error: 'Error interno del servidor', details: error.message },
       { status: 500 }
     );
   }
