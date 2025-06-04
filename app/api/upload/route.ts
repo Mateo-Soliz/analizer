@@ -29,7 +29,7 @@ export async function POST(request: Request) {
     const workbook = XLSX.read(buffer, { type: 'buffer' });
     const sheetName = workbook.SheetNames[0];
     const sheet = workbook.Sheets[sheetName];
-    const json = XLSX.utils.sheet_to_json(sheet, { defval: null });
+    const json = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: null });
 
     if (!json.length) {
       return NextResponse.json(
@@ -64,9 +64,9 @@ export async function POST(request: Request) {
     }
 
     // Extraer datos en el formato esperado
-    const timePoints = json.map((row: any) => row['Time point']);
+    const timePoints = json.map((row) => row['Time point']);
     const groups = columns.filter(col => col !== 'Time point');
-    const values = groups.map(group => json.map((row: any) => row[group]));
+    const values = groups.map(group => json.map((row) => row[group]));
 
     return NextResponse.json({
       data: {
@@ -75,9 +75,9 @@ export async function POST(request: Request) {
         values
       }
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     return NextResponse.json(
-      { error: 'Error interno del servidor', details: error.message },
+      { error: 'Error interno del servidor', details: (error instanceof Error ? error.message : String(error)) },
       { status: 500 }
     );
   }

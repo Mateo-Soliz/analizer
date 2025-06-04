@@ -11,10 +11,6 @@ function extendedSinusoidalModel(t: number, a: number, b: number, c: number, d: 
   return a + (b * Math.sin((2 * Math.PI * t) / 24) + c * Math.cos((2 * Math.PI * t) / 24)) / (1 - d * Math.sin((2 * Math.PI * t) / 24));
 }
 
-function reducedModel(t: number, a: number) {
-  return a;
-}
-
 // Mann-Whitney U test (implementación manual)
 function mannWhitneyU(x: number[], y: number[]) {
   const all = x.concat(y).sort((a, b) => a - b);
@@ -43,12 +39,12 @@ function iqr(arr: number[]) {
 
 // Función beta regularizada incompleta
 function ibeta(x: number, a: number, b: number): number {
-  let bt = (x === 0 || x === 1) ? 0 :
+  const bt = (x === 0 || x === 1) ? 0 :
     Math.exp(
       lgamma(a + b) - lgamma(a) - lgamma(b) +
       a * Math.log(x) + b * Math.log(1 - x)
     );
-  if (x < 0 || x > 1) return 0;
+  if (x < 0 || x > 1) throw new Error('x fuera de rango en ibeta');
   if (x < (a + 1) / (a + b + 2)) {
     return bt * betacf(x, a, b) / a;
   } else {
@@ -56,13 +52,13 @@ function ibeta(x: number, a: number, b: number): number {
   }
 }
 function betacf(x: number, a: number, b: number): number {
-  let m2, aa, c, d, del, h, qab, qam, qap;
-  let MAXIT = 100, EPS = 3.0e-7, FPMIN = 1.0e-30;
-  qab = a + b;
-  qap = a + 1.0;
-  qam = a - 1.0;
-  c = 1.0;
-  d = 1.0 - qab * x / qap;
+  let m2, aa, del, h;
+  const MAXIT = 100, EPS = 3.0e-7, FPMIN = 1.0e-30;
+  const qab = a + b;
+  const qap = a + 1.0;
+  const qam = a - 1.0;
+  let c = 1.0;
+  let d = 1.0 - qab * x / qap;
   if (Math.abs(d) < FPMIN) d = FPMIN;
   d = 1.0 / d;
   h = d;
@@ -98,7 +94,7 @@ function lgamma(z: number): number {
   z -= 1;
   let x = p[0];
   for (let i = 1; i < g + 2; i++) x += p[i] / (z + i);
-  let t = z + g + 0.5;
+  const t = z + g + 0.5;
   return 0.5 * Math.log(2 * Math.PI) + (z + 0.5) * Math.log(t) - t + Math.log(x) - Math.log(z + 1);
 }
 function fCDF(x: number, d1: number, d2: number): number {
@@ -123,16 +119,19 @@ export async function POST(request: Request) {
     const useExtendedModel = !!data.useExtendedModel;
     const noSignificant = data.noSignificant || 0.999;
 
-    const df: any[] = timePoints.map((tp, i) => {
-      const row: any = { 'Time point': tp };
+    const df: { [key: string]: number }[] = timePoints.map((tp, i) => {
+      const row: { [key: string]: number } = { 'Time point': tp };
       groups.forEach((g, j) => {
         row[g] = values[j][i];
       });
       return row;
     });
 
-    const results: any = {};
-    const plotData: any = {
+    const results: Record<string, unknown> = {};
+    const plotData: {
+      time_points: number[];
+      groups: Record<string, unknown>;
+    } = {
       time_points: Array.from({ length: 1000 }, (_, i) => (i * 24) / 999),
       groups: {}
     };
@@ -169,7 +168,7 @@ export async function POST(request: Request) {
           iqr: stats.map(s => s.iqr)
         }
       };
-      let modelFunc: any, initialParams: number[], paramCount: number;
+      let modelFunc: (params: number[]) => (t: number) => number, initialParams: number[], paramCount: number;
       if (useExtendedModel) {
         modelFunc = (params: number[]) => (t: number) => extendedSinusoidalModel(t, params[0], params[1], params[2], params[3]);
         initialParams = [ss.mean(y), 1, 1, 0.1];
@@ -197,20 +196,20 @@ export async function POST(request: Request) {
         yPredFull = t.map(tt => modelFunc(paramsFull)(tt));
         sseFull = ss.sum(y.map((v, i) => Math.pow(v - yPredFull[i], 2)));
         dfFull = y.length - paramCount;
-      } catch (e) {
+      } catch {
         results[group] = { error: 'No se pudo ajustar el modelo completo' };
-        plotData.groups[group].fitted_curve = null;
+        (plotData.groups[group] as { [key: string]: unknown } & { fitted_curve?: unknown }).fitted_curve = null;
         continue;
       }
-      let paramsReduced: number[] = [ss.mean(y)];
-      let yPredReduced: number[] = t.map(() => paramsReduced[0]);
-      let sseReduced = ss.sum(y.map((v, i) => Math.pow(v - yPredReduced[i], 2)));
-      let dfReduced = y.length - 1;
+      const paramsReduced: number[] = [ss.mean(y)];
+      const yPredReduced: number[] = t.map(() => paramsReduced[0]);
+      const sseReduced = ss.sum(y.map((v, i) => Math.pow(v - yPredReduced[i], 2)));
+      const dfReduced = y.length - 1;
       const num = (sseReduced - sseFull) / (dfReduced - dfFull);
       const denom = sseFull / dfFull;
       const fStat = num / denom;
       const pValueF = 1 - fCDF(fStat, dfReduced - dfFull, dfFull);
-      const a = paramsFull[0], b = paramsFull[1], c = paramsFull[2], d = paramsFull[3] || 0;
+      const a = paramsFull[0], b = paramsFull[1], c = paramsFull[2];
       const mesor = a;
       const amplitude = Math.sqrt(b ** 2 + c ** 2);
       const acrophaseRad = Math.atan2(c, b);
@@ -222,7 +221,7 @@ export async function POST(request: Request) {
       const tFine = Array.from({ length: 1000 }, (_, i) => (i * 24) / 999);
       const yFit = tFine.map(tt => modelFunc(paramsFull)(tt));
       const peakTime = tFine[yFit.indexOf(Math.max(...yFit))];
-      plotData.groups[group].fitted_curve = {
+      (plotData.groups[group] as { [key: string]: unknown } & { fitted_curve?: unknown }).fitted_curve = {
         time_points: tFine,
         values: yFit,
         is_significant: pValueF < noSignificant
@@ -243,7 +242,7 @@ export async function POST(request: Request) {
       };
     }
 
-    const mannWhitneyResults: any = {};
+    const mannWhitneyResults: Record<number, Record<string, unknown>> = {};
     const uniqueTimePoints = Array.from(new Set(timePoints)).sort((a, b) => a - b);
     for (const tp of uniqueTimePoints) {
       mannWhitneyResults[tp] = {};
@@ -256,7 +255,7 @@ export async function POST(request: Request) {
             try {
               const { U, p } = mannWhitneyU(x, y);
               mannWhitneyResults[tp][`${g1}_vs_${g2}`] = { U_statistic: U, p_value: p };
-            } catch (e) {
+            } catch {
               mannWhitneyResults[tp][`${g1}_vs_${g2}`] = { error: 'Error en Mann-Whitney' };
             }
           }
@@ -269,9 +268,9 @@ export async function POST(request: Request) {
       mann_whitney_tests: mannWhitneyResults,
       plot_data: plotData
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     return NextResponse.json(
-      { error: 'Error interno del servidor', details: error.message },
+      { error: 'Error interno del servidor', details: (error instanceof Error ? error.message : String(error)) },
       { status: 500 }
     );
   }
