@@ -153,7 +153,7 @@ for group in data['groups']:
         }
 
     except Exception as e:
-        print("Error en el ajuste del modelo:", e)
+        console.log("Error en el ajuste del modelo:", e);
         results[group] = {'error': str(e)}
         plot_data['groups'][group]['fitted_curve'] = None
 
@@ -194,16 +194,14 @@ with open('${tempDataPath}_results.json', 'w') as f:
     fs.writeFileSync(scriptPath, scriptContent);
     console.log("Script Python creado");
     // Ejecutar el script Python
-    return new Promise((resolve, reject) => {
+    return await new Promise<Response>((resolve, reject) => {
       const pythonProcess = spawn('python3', [scriptPath]);
       console.log("Script Python ejecutado");
       
       let pythonError = '';
-      let pythonOutput = '';
 
       // Capturar la salida estándar
       pythonProcess.stdout.on('data', (data) => {
-        pythonOutput += data.toString();
         console.log('Python stdout:', data.toString());
       });
 
@@ -239,6 +237,7 @@ with open('${tempDataPath}_results.json', 'w') as f:
           console.log("Archivo temporal de resultados eliminado");
           resolve(NextResponse.json(results));
         } catch (e) {
+          const errorMsg = e instanceof Error ? e.message : String(e);
           console.log("Error interno al procesar los resultados:", e);
           // Limpiar archivos temporales en caso de error
           try {
@@ -247,9 +246,8 @@ with open('${tempDataPath}_results.json', 'w') as f:
           } catch (cleanupError) {
             console.log("Error al limpiar archivos temporales:", cleanupError);
           }
-          
           resolve(NextResponse.json(
-            { error: `Error interno al procesar los resultados: ${e.message}` },
+            { error: `Error interno al procesar los resultados: ${errorMsg}` },
             { status: 500 }
           ));
         }

@@ -4,12 +4,45 @@ import AnalyzeIntro from "@/components/AnalyzeIntro";
 import FileDropZone from "@/components/FileDropZone";
 import Footer from "@/components/footer/footer";
 import Graph from "@/components/graph";
-import { useRouter } from "next/navigation";
 import React, { useState } from "react";
 
+interface CircadianGroupResult {
+  mesor: number;
+  amplitude: number;
+  acrophase: number;
+  acrophase_rad: number;
+  peak_time: number;
+  mse: number;
+  r2: number;
+  chi2: number;
+  f_statistic: number;
+  p_value: number;
+}
+
+interface CircadianAnalysisResults {
+  circadian_analysis: Record<string, CircadianGroupResult>;
+  mann_whitney_tests?: unknown;
+  plot_data?: unknown;
+}
+
+// Definir el tipo PlotData exactamente como en Graph
+interface GroupData {
+  raw_data: {
+    time_points: number[];
+    values: number[];
+  };
+  fitted_curve?: {
+    time_points: number[];
+    values: number[];
+  };
+}
+
+interface PlotData {
+  groups: Record<string, GroupData>;
+}
+
 export default function AnalyzePage() {
-  const router = useRouter();
-  const [plotData, setPlotData] = useState<any>(null);
+  const [plotData, setPlotData] = useState<PlotData | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [fileName, setFileName] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -124,7 +157,7 @@ export default function AnalyzePage() {
       localStorage.setItem("fileName", fileName);
 
       // 4. Redirigir a la página de resultados
-      setPlotData(analysisResults.plot_data);
+      setPlotData(analysisResults.plot_data as PlotData);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error desconocido");
       console.error("Error en el proceso:", err);
@@ -134,10 +167,10 @@ export default function AnalyzePage() {
     }
   };
 
-  const getTableData = (analysisResults: any) => {
+  const getTableData = (analysisResults: CircadianAnalysisResults) => {
     if (!analysisResults?.circadian_analysis) return [];
     return Object.entries(analysisResults.circadian_analysis).map(
-      ([group, values]: [string, any]) => ({
+      ([group, values]: [string, CircadianGroupResult]) => ({
         group,
         mesor: values.mesor,
         amplitude: values.amplitude,
@@ -193,7 +226,7 @@ export default function AnalyzePage() {
         {plotData && (
           <>
             <Graph data={plotData} fileName={fileName} />
-            <AnalysisTable data={getTableData(JSON.parse(localStorage.getItem("analysisResults") || "{}"))} />
+            <AnalysisTable data={getTableData(JSON.parse(localStorage.getItem("analysisResults") || "{}") as CircadianAnalysisResults)} />
           </>
         )}
       </main>

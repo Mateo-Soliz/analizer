@@ -1,11 +1,26 @@
 'use client';
 
+import Image from "next/image";
 import { useState } from 'react';
+
+interface GroupResult {
+  mesor: number;
+  amplitude: number;
+  acrophase: number;
+  f_statistic: number;
+  p_value: number;
+  error?: string;
+}
+
+interface AnalysisResults {
+  graph?: string;
+  results: Record<string, GroupResult>;
+}
 
 export default function AnalyzerForm() {
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
-  const [results, setResults] = useState<any>(null);
+  const [results, setResults] = useState<AnalysisResults | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -100,17 +115,19 @@ export default function AnalyzerForm() {
           {/* Mostrar la gráfica */}
           {results.graph && (
             <div className="mb-6">
-              <img
+              <Image
                 src={`data:image/png;base64,${results.graph}`}
                 alt="Gráfica de análisis"
                 className="max-w-full"
+                width={800}
+                height={400}
               />
             </div>
           )}
 
           {/* Mostrar resultados numéricos */}
           <div className="space-y-4">
-            {Object.entries(results.results).map(([group, data]: [string, any]) => (
+            {Object.entries(results.results).map(([group, data]: [string, GroupResult]) => (
               <div key={group} className="border p-4 rounded">
                 <h3 className="font-bold">{group}</h3>
                 {data.error ? (

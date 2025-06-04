@@ -76,7 +76,7 @@ except Exception as e:
     fs.writeFileSync(scriptPath, scriptContent);
 
     // Ejecutar script Python
-    return new Promise((resolve, reject) => {
+    return await new Promise<Response>((resolve, reject) => {
       const pythonProcess = spawn('python3', [scriptPath]);
       let outputData = '';
       let errorData = '';
@@ -112,7 +112,7 @@ except Exception as e:
             return;
           }
           resolve(NextResponse.json(result));
-        } catch (e) {
+        } catch {
           reject(NextResponse.json(
             { error: 'Error al procesar la respuesta del script' },
             { status: 500 }
