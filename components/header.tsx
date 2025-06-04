@@ -2,19 +2,35 @@
 
 import { Menu, X } from "lucide-react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useState } from "react";
 import DesktopNav from "./nav/desktop-nav";
 import MobileMenu from "./nav/mobile-menu";
 
 const navItems = [
   { label: "Inicio", href: "/" },
-  { label: "Analizar Datos", href: "/analizar" },
+  { label: "Analizar Datos", href: "/analyze" },
   { label: "Iniciar Sesión", href: "/login" },
   { label: "Registrarse", href: "/register" },
 ];
 
 export default function Header({ isLoggedIn }: { isLoggedIn: boolean }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const pathname = usePathname();
+
+  // Ocultar solo el botón correspondiente a la ruta actual
+  const filteredNavItems = navItems.filter(
+    (item) => {
+      if (pathname === "/login" && item.href === "/login") {
+        return false;
+      }
+      if (pathname === "/register" && item.href === "/register") {
+        return false;
+      }
+      return true;
+    }
+  );
+
   if (isLoggedIn) {
     return null;
   }
@@ -28,7 +44,7 @@ export default function Header({ isLoggedIn }: { isLoggedIn: boolean }) {
             </Link>
           </div>
 
-          <DesktopNav navItems={navItems} />
+          <DesktopNav navItems={filteredNavItems} />
 
           {/* Mobile menu button */}
           <div className="md:hidden">
@@ -43,7 +59,7 @@ export default function Header({ isLoggedIn }: { isLoggedIn: boolean }) {
 
         <MobileMenu
           isOpen={isMenuOpen}
-          navItems={navItems}
+          navItems={filteredNavItems}
           onItemClick={() => setIsMenuOpen(false)}
         />
       </div>
