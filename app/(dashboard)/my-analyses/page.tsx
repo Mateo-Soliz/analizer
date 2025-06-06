@@ -1,44 +1,25 @@
 "use client";
 import { AnalizerCard } from "@/components/cards/analizer-card";
 import { Button } from "@/components/primitives/button";
+import { useUserStore } from "@/lib/client-only/stores/user/user.store";
+import { getGallery } from "@/lib/server-only/data-set/data.service";
+import { ChartGalleryType } from "@/lib/server-only/data-set/data.type";
 import { BarChart3, Share2 } from "lucide-react";
 import { useRouter } from "next/navigation";
-
-const chartGallery = [
-  {
-    id: 1,
-    title: "Patrón de Sueño vs Calidad",
-    description: "Correlación entre horas de sueño y calidad percibida",
-    type: "scatter",
-    xAxis: "Horas de Sueño",
-    yAxis: "Calidad (1-10)",
-    date: "15 Feb 2024",
-    category: "Sueño",
-    thumbnail: "/placeholder.svg?height=200&width=300",
-    tags: ["sueño", "calidad", "correlación"],
-    likes: 12,
-    views: 45,
-    isPublic: true,
-  },
-  {
-    id: 2,
-    title: "Ritmo Circadiano Semanal",
-    description: "Temperatura corporal a lo largo de la semana",
-    type: "line",
-    xAxis: "Hora del Día",
-    yAxis: "Temperatura (°C)",
-    date: "12 Feb 2024",
-    category: "Temperatura",
-    thumbnail: "/placeholder.svg?height=200&width=300",
-    tags: ["temperatura", "circadiano", "semanal"],
-    likes: 8,
-    views: 32,
-    isPublic: false,
-  },
-];
+import { useEffect, useState } from "react";
 
 const MyAnalysesPage = () => {
   const router = useRouter();
+  const { user } = useUserStore();
+  const [gallery, setGallery] = useState<ChartGalleryType[]>([]);
+  useEffect(() => {
+    const fetchGallery = async () => {
+      const gallery = await getGallery(user?.id ?? user?._id);
+      setGallery(gallery);
+    };
+    fetchGallery();
+  }, [user, user?._id]);
+  console.log(gallery);
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
@@ -60,9 +41,15 @@ const MyAnalysesPage = () => {
         </div>
       </div>
       <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {chartGallery.map((chart) => (
-          <AnalizerCard key={chart.id} chart={chart} />
-        ))}
+        {gallery.length > 0 ? (
+          gallery.map((chart) => (
+            <AnalizerCard key={chart.id} chart={chart} />
+          ))
+        ) : (
+          <div className="flex justify-center items-center h-full">
+            <p className="text-muted-foreground">No hay gráficas</p>
+          </div>
+        )}
       </div>
     </div>
   );

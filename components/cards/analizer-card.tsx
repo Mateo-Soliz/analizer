@@ -8,7 +8,6 @@ import {
   Sun,
   TrendingUp
 } from "lucide-react";
-import Image from "next/image";
 import { Badge } from "../primitives/badge";
 import {
   Card,
@@ -69,28 +68,29 @@ const getChartIcon = (type: string) => {
   }
 
 export const AnalizerCard = ({ chart }: { chart: any }) => {
+  console.log(chart);
   return (
     <Card key={chart.id} className="group hover:shadow-lg transition-shadow">
       <div className="relative">
-        <Image
-          src={chart.thumbnail || "/placeholder.svg"}
+      {/*   <Image
+          src={chart?.thumbnail || "/placeholder.svg?height=200&width=300"}
           alt={chart.title}
           className="w-full h-48 object-cover rounded-t-lg"
-        />
+        /> */}
         <div className="absolute top-2 right-2 flex gap-1">
-          <Badge className={getCategoryColor(chart.category)}>
-            {getCategoryIcon(chart.category)}
-            <span className="ml-1">{chart.category}</span>
+          <Badge className={getCategoryColor(chart?.category)}>
+            {getCategoryIcon(chart?.category)}
+            <span className="ml-1">{chart?.category}</span>
           </Badge>
         </div>
         <div className="absolute top-2 left-2">
           <Badge variant="outline" className="bg-white/90">
-            {getChartIcon(chart.type)}
-            <span className="ml-1 capitalize">{chart.type}</span>
+            {getChartIcon(chart?.type)}
+            <span className="ml-1 capitalize">{chart?.type}</span>
           </Badge>
         </div>
       </div>
-      <HeaderCard title={chart.title} description={chart.description} />
+      <HeaderCard title={chart?.title} description={chart?.description} />
       <CardContent className="space-y-4">
         <ContentCard chart={chart} />
         <FooterCard chart={chart} />

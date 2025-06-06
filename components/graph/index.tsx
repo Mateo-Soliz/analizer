@@ -35,6 +35,7 @@ interface GraphProps {
   className?: string;
   setAxisXName?: (name: string) => void;
   setAxisYName?: (name: string) => void;
+  config?: boolean;
 }
 
 const defaultColors = [
@@ -61,7 +62,9 @@ const Graph = ({
   className,
   setAxisXName,
   setAxisYName,
+  config = true,
 }: GraphProps) => {
+  console.log(initialData);
   const [plotData, setPlotData] = useState<PlotData | null>(initialData);
   const [error, setError] = useState<string | null>(null);
   const [legendPosition, setLegendPosition] = useState<"top" | "left">(
@@ -297,7 +300,7 @@ const Graph = ({
       )}
     >
       {/* Menú de configuración (solo en desktop/tablet) */}
-      {isMobile && (
+      {isMobile && config && (
         <MenuConfigMobile
           axisConfig={axisConfig}
           handleAxisChange={handleAxisChange}
@@ -313,7 +316,7 @@ const Graph = ({
         <div className="w-full h-full min-h-[500px]">
           <Scatter data={chartData} options={options} height={500} />
         </div>
-        {!isMobile && (
+        {!isMobile && config && (
           <MenuConfig
             axisConfig={axisConfig}
             handleAxisChange={handleAxisChange}
