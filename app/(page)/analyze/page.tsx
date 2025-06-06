@@ -154,12 +154,12 @@ export default function AnalyzePage() {
           </div>
         )}
         {plotData && (
-          <>
+          <div className="flex flex-col gap-4">
             <Graph data={plotData} fileName={fileName} />
             <AnalysisTable
               data={getTableData(analysisResults as CircadianAnalysisResults)}
             />
-          </>
+          </div>
         )}
       </main>
       <Footer />
