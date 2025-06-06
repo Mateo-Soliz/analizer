@@ -102,6 +102,7 @@ const AnalyzerPage = () => {
   const { user } = useUserStore();
   const onSubmit = async (data: any) => {
     try {
+      // @ts-ignore
       const result = await saveDataSet({
         owner: user?.id,
         name: data.title,

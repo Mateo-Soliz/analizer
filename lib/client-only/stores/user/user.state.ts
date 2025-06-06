@@ -13,6 +13,7 @@ export interface UserState {
   created?: Date | string;
   _createdAt?: Date;
   _updatedAt?: Date;
+  id?: string;
 }
 
 export interface UserStore {

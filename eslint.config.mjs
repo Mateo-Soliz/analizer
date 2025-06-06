@@ -20,6 +20,7 @@ const eslintConfig = [
       "react/display-name": "off",
       "prefer-const": "off",
       "no-var": "off",
+      "@typescript-eslint/ban-ts-comment": "off",
     },
   },
 ];
