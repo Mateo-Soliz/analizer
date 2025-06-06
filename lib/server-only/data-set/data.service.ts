@@ -58,3 +58,9 @@ export async function processExcelFile(file: File) {
     values,
   };
 }
+
+export const saveDataSet = async (dataSet: DataSetType) => {
+  await connectMongo();
+  const newDataSet = await DataSet.create(dataSet);
+  return newDataSet;
+};

@@ -1,4 +1,6 @@
 "use client";
+import { CircadianAnalysisResults } from "@/app/(page)/analyze/page";
+import AnalysisTable from "@/components/AnalysisTable";
 import Graph from "@/components/graph";
 import { Button } from "@/components/primitives/button";
 import {
@@ -10,11 +12,14 @@ import {
 } from "@/components/primitives/card";
 import { Input } from "@/components/primitives/input";
 import { useFileAnalysis } from "@/hooks/useFileAnalysis";
+import { getTableData } from "@/lib/server-only/analyzer/analizer.mapper";
 import { Badge, CheckCircle, FileText, Upload } from "lucide-react";
 import { useState } from "react";
 
 const AnalyzerPage = () => {
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  const [analysisResults, setAnalysisResults] =
+    useState<CircadianAnalysisResults | null>(null);
   const { analyzeFile, isLoading, error, uploadProgress } = useFileAnalysis();
 
   const [plotData, setPlotData] = useState<any>(null);
@@ -44,6 +49,7 @@ const AnalyzerPage = () => {
     try {
       const results = await analyzeFile(uploadedFile);
       setPlotData(results.plot_data);
+      setAnalysisResults(results);
     } catch (err) {
       console.error("Error en el proceso:", err);
     }
@@ -161,11 +167,16 @@ const AnalyzerPage = () => {
         </CardContent>
       </Card>
       {plotData && (
-        <Graph
-          data={plotData}
-          fileName={uploadedFile?.name || ""}
-          className="max-w-7xl max-h-[700px]"
-        />
+        <div className="flex flex-col gap-4">
+          <Graph
+            data={plotData}
+            fileName={uploadedFile?.name || ""}
+            className="max-w-7xl max-h-[700px] mx-auto"
+          />
+          <AnalysisTable
+            data={getTableData(analysisResults as CircadianAnalysisResults)}
+          />
+        </div>
       )}
     </div>
   );

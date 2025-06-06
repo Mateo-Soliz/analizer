@@ -5,9 +5,10 @@ import FileDropZone from "@/components/FileDropZone";
 import Footer from "@/components/footer/footer";
 import Graph from "@/components/graph";
 import { useFileAnalysis } from "@/hooks/useFileAnalysis";
+import { getTableData } from "@/lib/server-only/analyzer/analizer.mapper";
 import React, { useState } from "react";
 
-interface CircadianGroupResult {
+export interface CircadianGroupResult {
   mesor: number;
   amplitude: number;
   acrophase: number;
@@ -20,7 +21,7 @@ interface CircadianGroupResult {
   p_value: number;
 }
 
-interface CircadianAnalysisResults {
+export interface CircadianAnalysisResults {
   circadian_analysis: Record<string, CircadianGroupResult>;
   mann_whitney_tests?: unknown;
   plot_data?: unknown;
@@ -96,26 +97,6 @@ export default function AnalyzePage() {
       console.error("Error en el proceso:", err);
     }
   };
-
-  const getTableData = (analysisResults: CircadianAnalysisResults) => {
-    if (!analysisResults?.circadian_analysis) return [];
-    return Object.entries(analysisResults.circadian_analysis).map(
-      ([group, values]: [string, CircadianGroupResult]) => ({
-        group,
-        mesor: values.mesor,
-        amplitude: values.amplitude,
-        acrophase: values.acrophase,
-        acrophase_rad: values.acrophase_rad,
-        peak_time: values.peak_time,
-        mse: values.mse,
-        r2: values.r2,
-        chi2: values.chi2,
-        f_statistic: values.f_statistic,
-        p_value: values.p_value,
-      })
-    );
-  };
-
   return (
     <div className="bg-white flex flex-col min-h-screen">
       <main className="flex-1 p-4 md:p-8 bg-gray-50">

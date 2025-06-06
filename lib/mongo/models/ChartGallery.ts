@@ -7,7 +7,8 @@ const chartGallerySchema = new mongoose.Schema({
     required: true,
   },
   data: {
-    type: Object,
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "DataSet",
     required: true,
   },
   description: {
@@ -33,7 +34,7 @@ const chartGallerySchema = new mongoose.Schema({
   },
   category: {
     type: String,
-    required: true,
+    required: false,
   },
   tags: {
     type: [String],
@@ -42,15 +43,15 @@ const chartGallerySchema = new mongoose.Schema({
   },
   likes: {
     type: Number,
-    required: true,
+    required: false,
   },
   views: {
     type: Number,
-    required: true,
+    required: false,
   },
   isPublic: {
     type: Boolean,
-    required: true,
+    required: false,
   },
 });
 
