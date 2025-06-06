@@ -46,7 +46,7 @@ export const POST = async () => {
         maxAge: expiresIn,
         httpOnly: true,
         secure: true,
-        domain: isProduction ? ".analizer-fp.com" : "localhost",
+        domain: isProduction ? ".analizer-c5rg.vercel.app" : "localhost",
       };
 
       cookieStore.set(options);
