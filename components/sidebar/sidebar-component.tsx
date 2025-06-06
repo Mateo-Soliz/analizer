@@ -6,23 +6,23 @@ import {
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
-  SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/primitives/sidebar";
+import { UserState } from "@/lib/client-only/stores/user/user.state";
 import { useUserStore } from "@/lib/client-only/stores/user/user.store";
 import { signOutFirebase } from "@/lib/firebase/actions";
-import { BarChart, Home, List, LogOut, Settings } from "lucide-react";
+import { BarChart3, Home, List, LogOut, Settings } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
-import { Avatar, AvatarFallback, AvatarImage } from "../primitives/avatar";
 import { Button } from "../primitives/button";
+import SidebarHeaderMemo from "./sidebar-header";
 
 const items = [
   { title: "Inicio", url: "/overview", icon: Home },
   { title: "Configuración", url: "/profile", icon: Settings },
   { title: "Mis Análisis", url: "/my-analyses", icon: List },
-  { title: "Analizar", url: "/analyzer", icon: BarChart },
+  { title: "Analizar", url: "/analyzer", icon: BarChart3 },
 ];
 
 export function AppSidebar() {
@@ -36,21 +36,7 @@ export function AppSidebar() {
   };
   return (
     <Sidebar>
-      <SidebarHeader>
-        <div className="flex items-center gap-3 px-2 py-4">
-          <Avatar className="h-8 w-8">
-            <AvatarImage
-              src={user?.avatar || "/placeholder.svg?height=32&width=32"}
-              alt="Usuario"
-            />
-            <AvatarFallback>{user?.name?.[0] || "U"}</AvatarFallback>
-          </Avatar>
-          <div className="flex flex-col">
-            <span className="text-sm font-medium ">{user?.name}</span>
-            <span className="text-xs text-muted-foreground">{user?.email}</span>
-          </div>
-        </div>
-      </SidebarHeader>
+      <SidebarHeaderMemo user={user as UserState} />
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupLabel>Menú</SidebarGroupLabel>
