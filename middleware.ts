@@ -6,7 +6,11 @@ export async function middleware(request: NextRequest) {
   const sessionCookieName = getSessionCookieName();
   const session = await getSessionCookie();
 
-  const apiUrl = request.nextUrl.origin;
+  const apiUrl =
+    process.env.NODE_ENV === "production"
+      ? "http://localhost:3000"
+      : request.nextUrl.origin;
+
   const pathname = request.nextUrl.pathname;
 
   try {
