@@ -22,18 +22,15 @@ export async function middleware(request: NextRequest) {
 
     const isAuthenticated = res.status === 200;
 
-    // Si está autenticado y va a login o register, redirige a overview
     if (isAuthenticated && ["/login", "/register", "/"].includes(pathname)) {
       return NextResponse.redirect(new URL("/overview", request.url));
     }
 
-    // Si NO está autenticado y va a una ruta protegida, redirige a home
     const publicRoutes = ["/", "/login", "/register", "/analyze"];
     if (!isAuthenticated && !publicRoutes.includes(pathname)) {
       return NextResponse.redirect(new URL("/", request.url));
     }
 
-    // Permite el acceso en los demás casos
     return NextResponse.next();
   } catch (error) {
     console.log("error", error);
