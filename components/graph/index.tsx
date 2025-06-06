@@ -33,6 +33,8 @@ interface GraphProps {
   data: PlotData;
   fileName: string;
   className?: string;
+  setAxisXName?: (name: string) => void;
+  setAxisYName?: (name: string) => void;
 }
 
 const defaultColors = [
@@ -53,7 +55,13 @@ function getRandomColor() {
     .padStart(6, "0")}`;
 }
 
-const Graph = ({ data: initialData, fileName, className }: GraphProps) => {
+const Graph = ({
+  data: initialData,
+  fileName,
+  className,
+  setAxisXName,
+  setAxisYName,
+}: GraphProps) => {
   const [plotData, setPlotData] = useState<PlotData | null>(initialData);
   const [error, setError] = useState<string | null>(null);
   const [legendPosition, setLegendPosition] = useState<"top" | "left">(
@@ -102,6 +110,13 @@ const Graph = ({ data: initialData, fileName, className }: GraphProps) => {
             : value,
       },
     }));
+    if (setAxisXName && setAxisYName) {
+      if (axis === "x") {
+        setAxisXName(value);
+      } else {
+        setAxisYName(value);
+      }
+    }
   };
 
   // Handler para cambios de color

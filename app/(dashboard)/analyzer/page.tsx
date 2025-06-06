@@ -10,11 +10,34 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/primitives/card";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/primitives/dialog";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/primitives/form";
 import { Input } from "@/components/primitives/input";
 import { useFileAnalysis } from "@/hooks/useFileAnalysis";
+import { useUserStore } from "@/lib/client-only/stores/user/user.store";
 import { getTableData } from "@/lib/server-only/analyzer/analizer.mapper";
+import {
+  createGallery,
+  saveDataSet,
+} from "@/lib/server-only/data-set/data.service";
 import { Badge, CheckCircle, FileText, Upload } from "lucide-react";
 import { useState } from "react";
+import { useForm } from "react-hook-form";
 
 const AnalyzerPage = () => {
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
@@ -23,6 +46,28 @@ const AnalyzerPage = () => {
   const { analyzeFile, isLoading, error, uploadProgress } = useFileAnalysis();
 
   const [plotData, setPlotData] = useState<any>(null);
+  const [showSaveDialog, setShowSaveDialog] = useState(false);
+  const [axisXName, setAxisXName] = useState<string | null>("Time point (ZT)");
+  const [axisYName, setAxisYName] = useState<string | null>("Value");
+
+  // Formulario con react-hook-form
+  const form = useForm({
+    defaultValues: {
+      title: "",
+      description: "",
+      type: "scatter",
+      tags: ["Circadiano", "diurno", "oscilación"],
+      xAxis: axisXName,
+      yAxis: axisYName,
+      data: plotData,
+      isPublic: true,
+      likes: 0,
+      views: 0,
+      date: new Date().toISOString(),
+      category: "",
+    },
+  });
+
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -52,6 +97,30 @@ const AnalyzerPage = () => {
       setAnalysisResults(results);
     } catch (err) {
       console.error("Error en el proceso:", err);
+    }
+  };
+  const { user } = useUserStore();
+  const onSubmit = async (data: any) => {
+    try {
+      const result = await saveDataSet({
+        owner: user?.id,
+        name: data.title,
+        data: analysisResults,
+      });
+      const galleryResult = await createGallery({
+        title: data.title,
+        description: data.description,
+        type: data.type,
+        xAxis: data.xAxis,
+        yAxis: data.yAxis,
+        data: result.id,
+        owner: user?.id,
+        tags: data.tags,
+      });
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setShowSaveDialog(false);
     }
   };
 
@@ -172,10 +241,182 @@ const AnalyzerPage = () => {
             data={plotData}
             fileName={uploadedFile?.name || ""}
             className="max-w-7xl max-h-[700px] mx-auto"
+            setAxisXName={setAxisXName}
+            setAxisYName={setAxisYName}
           />
           <AnalysisTable
             data={getTableData(analysisResults as CircadianAnalysisResults)}
           />
+          <Dialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
+            <DialogTrigger asChild>
+              <Button>Guardar Datos</Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Guardar gráfica en galería</DialogTitle>
+              </DialogHeader>
+              <Form {...form}>
+                <form
+                  onSubmit={form.handleSubmit(onSubmit)}
+                  className="space-y-4"
+                >
+                  <FormField
+                    control={form.control}
+                    name="title"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Nombre</FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            required
+                            placeholder="Nombre de la gráfica"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="description"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Descripción</FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            required
+                            placeholder="Descripción"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="type"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Tipo de gráfica</FormLabel>
+                        <FormControl>
+                          <select
+                            {...field}
+                            className="w-full border rounded-md p-2"
+                          >
+                            <option value="bar">Barra</option>
+                            <option value="line">Línea</option>
+                            <option value="area">Área</option>
+                            <option value="scatter">Dispersión</option>
+                            <option value="pie">Pastel</option>
+                          </select>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="tags"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Etiquetas</FormLabel>
+                        <div className="flex flex-col gap-2">
+                          <label className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              value="Circadiano"
+                              checked={field.value?.includes("Circadiano")}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  field.onChange([
+                                    ...(field.value || []),
+                                    "Circadiano",
+                                  ]);
+                                } else {
+                                  field.onChange(
+                                    (field.value || [])?.filter(
+                                      (v: string) => v !== "Circadiano"
+                                    )
+                                  );
+                                }
+                              }}
+                            />
+                            Circadiano
+                          </label>
+                          <label className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              value="diurno"
+                              checked={field.value?.includes("diurno")}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  field.onChange([
+                                    ...(field.value || []),
+                                    "diurno",
+                                  ]);
+                                } else {
+                                  field.onChange(
+                                    (field.value || [])?.filter(
+                                      (v: string) => v !== "diurno"
+                                    )
+                                  );
+                                }
+                              }}
+                            />
+                            diurno
+                          </label>
+                          <label className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              value="oscilación"
+                              checked={field.value?.includes("oscilación")}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  field.onChange([
+                                    ...(field.value || []),
+                                    "oscilación",
+                                  ]);
+                                } else {
+                                  field.onChange(
+                                    (field.value || [])?.filter(
+                                      (v: string) => v !== "oscilación"
+                                    )
+                                  );
+                                }
+                              }}
+                            />
+                            oscilación
+                          </label>
+                        </div>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  {/* Campos de solo lectura para los ejes */}
+                  <div className="flex gap-2">
+                    <div className="flex-1">
+                      <FormLabel>Eje X</FormLabel>
+                      <Input value={axisXName || ""} readOnly />
+                    </div>
+                    <div className="flex-1">
+                      <FormLabel>Eje Y</FormLabel>
+                      <Input value={axisYName || ""} readOnly />
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button type="submit">Guardar</Button>
+                    <DialogClose asChild>
+                      <Button variant="outline" type="button">
+                        Cancelar
+                      </Button>
+                    </DialogClose>
+                  </DialogFooter>
+                </form>
+              </Form>
+            </DialogContent>
+          </Dialog>
         </div>
       )}
     </div>

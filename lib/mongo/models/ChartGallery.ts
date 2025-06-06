@@ -15,6 +15,11 @@ const chartGallerySchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  owner: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
+    required: true,
+  },
   type: {
     type: String,
     required: true,
@@ -31,6 +36,7 @@ const chartGallerySchema = new mongoose.Schema({
   date: {
     type: Date,
     required: true,
+    default: Date.now,
   },
   category: {
     type: String,
