@@ -224,7 +224,7 @@ const AnalyzerPage = () => {
         </CardContent>
       </Card>
       {plotData && (
-        <Graph data={plotData} fileName={uploadedFile?.name || ""} className="max-w-4xl mx-auto max-h-[600px]"  />
+        <Graph data={plotData} fileName={uploadedFile?.name || ""} className="max-w-7xl max-h-[700px]"  />
       )}
     </div>
   );
