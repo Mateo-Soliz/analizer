@@ -8,10 +8,11 @@ import { auth } from "../client-only/firebase-auth/firebase-config";
 
 export const signOutFirebase = async () => {
   try {
-    await signOut(auth);
-    await fetch("/api/logout", {
+    const res = await fetch("/api/logout", {
       method: "POST",
     });
+    console.log("res", res);
+    await signOut(auth);
   } catch (error) {
     console.error(error);
   }
