@@ -87,7 +87,7 @@ export default function OverviewPage() {
             </div>
           </div>
           <div className="mt-6 text-center text-gray-500 text-sm">
-            © 2024 BioAnalyzer. Proyecto FCT - Desarrollo de Aplicaciones Web.
+            © 2025 BioAnalyzer. Proyecto FCT - Desarrollo de Aplicaciones Web.
           </div>
         </CardContent>
       </Card>
