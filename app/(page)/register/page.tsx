@@ -1,6 +1,5 @@
 "use client";
 
-import type React from "react";
 
 import { RegisterForm } from "@/components/forms/register/register-form";
 import RegisterFormContainer from "@/components/forms/register/register-form-container";
@@ -17,7 +16,6 @@ import { useGoogleSignIn } from "@/hooks/useGoogleSignIn";
 import { Mail } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
 
 export default function RegisterPage() {
   const {
@@ -25,40 +23,7 @@ export default function RegisterPage() {
     isLoading: isGoogleLoading,
     error: googleError,
   } = useGoogleSignIn();
-  const [formData, setFormData] = useState({
-    name: "",
-    email: "",
-    password: "",
-    confirmPassword: "",
-  });
-  const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (formData.password !== formData.confirmPassword) {
-      alert("Las contraseñas no coinciden");
-      return;
-    }
-
-    setIsLoading(true);
-
-    // Aquí iría la lógica de registro
-    console.log("Register attempt:", formData);
-
-    // Simular delay de API
-    setTimeout(() => {
-      setIsLoading(false);
-    }, 1000);
-  };
 
   const handleGoogleSignUp = async () => {
     const user = await signInWithGoogle();
