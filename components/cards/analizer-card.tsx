@@ -1,17 +1,18 @@
 import {
-    Activity,
-    BarChart3,
-    Heart,
-    LineChart,
-    Moon,
-    PieChart,
-    Sun,
-    TrendingUp
+  Activity,
+  BarChart3,
+  Heart,
+  LineChart,
+  Moon,
+  PieChart,
+  Sun,
+  TrendingUp
 } from "lucide-react";
+import Image from "next/image";
 import { Badge } from "../primitives/badge";
 import {
-    Card,
-    CardContent
+  Card,
+  CardContent
 } from "../primitives/card";
 import { ContentCard } from "./content-card";
 import { FooterCard } from "./footer-card";
@@ -71,7 +72,7 @@ export const AnalizerCard = ({ chart }: { chart: any }) => {
   return (
     <Card key={chart.id} className="group hover:shadow-lg transition-shadow">
       <div className="relative">
-        <img
+        <Image
           src={chart.thumbnail || "/placeholder.svg"}
           alt={chart.title}
           className="w-full h-48 object-cover rounded-t-lg"
