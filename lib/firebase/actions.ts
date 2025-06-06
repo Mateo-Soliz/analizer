@@ -7,10 +7,14 @@ import {
 import { auth } from "../client-only/firebase-auth/firebase-config";
 
 export const signOutFirebase = async () => {
-  await signOut(auth);
-  await fetch("/api/logout", {
-    method: "POST",
-  });
+  try {
+    await signOut(auth);
+    await fetch("/api/logout", {
+      method: "POST",
+    });
+  } catch (error) {
+    console.error(error);
+  }
 };
 
 export const registerWithEmail = async (
@@ -45,10 +49,7 @@ export const registerWithEmail = async (
   }
 };
 
-export const loginWithEmail = async (
-  email: string,
-  password: string
-) => {
+export const loginWithEmail = async (email: string, password: string) => {
   try {
     const userCredential = await signInWithEmailAndPassword(
       auth,
