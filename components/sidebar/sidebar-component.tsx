@@ -30,9 +30,13 @@ export function AppSidebar() {
   const pathname = usePathname();
   const { clearUser, user } = useUserStore();
   const onLogout = async () => {
-    await signOutFirebase();
-    clearUser();
-    router.push("/");
+    try {
+      await signOutFirebase();
+      clearUser();
+      router.push("/");
+    } catch (error) {
+      console.error(error);
+    }
   };
   return (
     <Sidebar>
