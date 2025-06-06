@@ -262,7 +262,7 @@ const Graph = ({
         },
       },
     }),
-    [fileName, axisConfig]
+    [fileName, axisConfig, legendPosition]
   );
 
   useEffect(() => {

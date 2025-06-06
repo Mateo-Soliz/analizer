@@ -102,9 +102,12 @@ const AnalyzerPage = () => {
   const { user } = useUserStore();
   const onSubmit = async (data: any) => {
     try {
+      if (!user?.id) {
+        throw new Error("El usuario no tiene un id definido. No se puede guardar el dataset.");
+      }
       // @ts-ignore
       const result = await saveDataSet({
-        owner: user?.id,
+        owner: user.id,
         name: data.title,
         data: analysisResults,
       });
@@ -115,7 +118,7 @@ const AnalyzerPage = () => {
         xAxis: data.xAxis,
         yAxis: data.yAxis,
         data: result.id,
-        owner: user?.id,
+        owner: user.id,
         tags: data.tags,
       });
     } catch (error) {

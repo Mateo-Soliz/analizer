@@ -13,6 +13,7 @@ const MyAnalysesPage = () => {
   const { user } = useUserStore();
   const [gallery, setGallery] = useState<ChartGalleryType[]>([]);
   useEffect(() => {
+    if (!user?.id && !user?._id) return;
     const fetchGallery = async () => {
       const gallery = await getGallery(user?.id ?? user?._id);
       setGallery(gallery);
@@ -39,7 +40,7 @@ const MyAnalysesPage = () => {
       <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {gallery.length > 0 ? (
           gallery.map((chart) => (
-            <AnalizerCard key={chart.id} chart={chart} />
+            <AnalizerCard key={chart.id } chart={chart} />
           ))
         ) : (
           <div className="flex justify-center items-center h-full">

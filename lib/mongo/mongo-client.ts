@@ -1,10 +1,10 @@
-import {MongoClient} from 'mongodb';
+import { MongoClient } from 'mongodb';
 
 // This lib is use just to connect to the database in next-auth.
 // We don't use it anywhere else in the API routes—we use mongoose.js instead (to be able to use models)
 
 declare global {
-  // eslint-disable-next-line no-unused-vars
+  // var _mongoClientPromise: Promise<MongoClient> | undefined;
   var _mongoClientPromise: Promise<MongoClient> | undefined;
 }
 
