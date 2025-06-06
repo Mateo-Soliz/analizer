@@ -152,10 +152,6 @@ export default function AnalyzePage() {
         );
       }
 
-      // 3. Guardar resultados
-      localStorage.setItem("analysisResults", JSON.stringify(analysisResults));
-      localStorage.setItem("fileName", fileName);
-
       // 4. Redirigir a la página de resultados
       setPlotData(analysisResults.plot_data as PlotData);
     } catch (err) {
@@ -226,7 +222,13 @@ export default function AnalyzePage() {
         {plotData && (
           <>
             <Graph data={plotData} fileName={fileName} />
-            <AnalysisTable data={getTableData(JSON.parse(localStorage.getItem("analysisResults") || "{}") as CircadianAnalysisResults)} />
+            <AnalysisTable
+              data={getTableData(
+                JSON.parse(
+                  localStorage.getItem("analysisResults") || "{}"
+                ) as CircadianAnalysisResults
+              )}
+            />
           </>
         )}
       </main>
