@@ -36,6 +36,8 @@ export default function LoginFormContainer({
       const { user, status } = await loginWithEmail(data.email, data.password);
       if (status === 200) {
         const userData = await getUser(user.uid);
+        console.log(userData);
+
         setUser(userData);
         router.push("/overview");
       } else if (

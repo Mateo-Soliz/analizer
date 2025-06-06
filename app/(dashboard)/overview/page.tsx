@@ -7,7 +7,8 @@ export default function OverviewPage() {
   const { user } = useUserStore();
   return (
     <div>
-     
+      <h1>Overview</h1>
+      {JSON.stringify(user, null, 2)}
     </div>
   );
 }

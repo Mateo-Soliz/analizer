@@ -9,6 +9,7 @@ export interface UserState {
   avatar: string;
   verified: boolean;
   role: string;
+  created?: Date | string;
   _createdAt?: Date;
   _updatedAt?: Date;
 }

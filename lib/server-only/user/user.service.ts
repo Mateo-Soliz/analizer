@@ -14,7 +14,7 @@ export const createUser = async (user: UserType) => {
 
 export const getUser = async (uid: string) => {
   await connectMongo();
-  const user = await User.findOne({ uid });
+  const user = await User.findOne({ uid }).lean();
   return JSON.parse(JSON.stringify(user));
 };
 

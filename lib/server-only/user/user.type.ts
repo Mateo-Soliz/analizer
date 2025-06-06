@@ -9,7 +9,7 @@ export type User = {
   verified: boolean;
   role: string;
   uid: string;
-  created: Date;
+  created?: Date | string;
   _createdAt?: Date;
   _updatedAt?: Date;
 };
