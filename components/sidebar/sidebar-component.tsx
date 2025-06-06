@@ -13,7 +13,7 @@ import {
 } from "@/components/primitives/sidebar";
 import { useUserStore } from "@/lib/client-only/stores/user/user.store";
 import { signOutFirebase } from "@/lib/firebase/actions";
-import { BarChart, Home, LogOut, Settings } from "lucide-react";
+import { BarChart, Home, List, LogOut, Settings } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { Avatar, AvatarFallback, AvatarImage } from "../primitives/avatar";
 import { Button } from "../primitives/button";
@@ -21,7 +21,8 @@ import { Button } from "../primitives/button";
 const items = [
   { title: "Inicio", url: "/overview", icon: Home },
   { title: "Configuración", url: "/profile", icon: Settings },
-  { title: "Analizar", url: "/analyze", icon: BarChart },
+  { title: "Mis Análisis", url: "/my-analyses", icon: List },
+  { title: "Analizar", url: "/analyzer", icon: BarChart },
 ];
 
 export function AppSidebar() {
