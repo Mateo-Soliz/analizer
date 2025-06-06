@@ -39,8 +39,8 @@ const MyAnalysesPage = () => {
       </div>
       <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {gallery.length > 0 ? (
-          gallery.map((chart) => (
-            <AnalizerCard key={chart.id } chart={chart} />
+          gallery.map((chart, index) => (
+            <AnalizerCard key={index} chart={chart} />
           ))
         ) : (
           <div className="flex justify-center items-center h-full">
