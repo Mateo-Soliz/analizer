@@ -45,7 +45,8 @@ interface PlotData {
 export default function AnalyzePage() {
   const [plotData, setPlotData] = useState<PlotData | null>(null);
   const { analyzeFile, isLoading, error, uploadProgress } = useFileAnalysis();
-
+  const [analysisResults, setAnalysisResults] =
+    useState<CircadianAnalysisResults | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [fileName, setFileName] = useState("");
 
@@ -90,6 +91,7 @@ export default function AnalyzePage() {
     try {
       const results = await analyzeFile(selectedFile);
       setPlotData(results.plot_data);
+      setAnalysisResults(results);
     } catch (err) {
       console.error("Error en el proceso:", err);
     }
@@ -155,11 +157,7 @@ export default function AnalyzePage() {
           <>
             <Graph data={plotData} fileName={fileName} />
             <AnalysisTable
-              data={getTableData(
-                JSON.parse(
-                  localStorage.getItem("analysisResults") || "{}"
-                ) as CircadianAnalysisResults
-              )}
+              data={getTableData(analysisResults as CircadianAnalysisResults)}
             />
           </>
         )}

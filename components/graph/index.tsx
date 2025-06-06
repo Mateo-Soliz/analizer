@@ -10,6 +10,7 @@ import {
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Scatter } from "react-chartjs-2";
 import MenuConfig from "./menu-config";
+import MenuConfigMobile from "./menu-config.mobile";
 
 Chart.register(...registerables);
 
@@ -55,7 +56,9 @@ function getRandomColor() {
 const Graph = ({ data: initialData, fileName, className }: GraphProps) => {
   const [plotData, setPlotData] = useState<PlotData | null>(initialData);
   const [error, setError] = useState<string | null>(null);
-
+  const [legendPosition, setLegendPosition] = useState<"top" | "left">(
+    typeof window !== "undefined" && window.innerWidth < 640 ? "top" : "left"
+  );
   // Estado para configuración de ejes
   const [axisConfig, setAxisConfig] = useState({
     x: { title: "Time point (ZT)", min: 0, max: 24 },
@@ -64,6 +67,10 @@ const Graph = ({ data: initialData, fileName, className }: GraphProps) => {
 
   // Estado para colores de cada grupo
   const [colorConfig, setColorConfig] = useState<Record<string, string>>({});
+
+  const [isMobile, setIsMobile] = useState(
+    typeof window !== "undefined" && window.innerWidth < 640
+  );
 
   // Inicializar colores para cada grupo si no existen
   useEffect(() => {
@@ -172,7 +179,7 @@ const Graph = ({ data: initialData, fileName, className }: GraphProps) => {
       },
       plugins: {
         legend: {
-          position: "left",
+          position: legendPosition,
           labels: {
             padding: 20,
             usePointStyle: true,
@@ -240,6 +247,17 @@ const Graph = ({ data: initialData, fileName, className }: GraphProps) => {
     [fileName, axisConfig]
   );
 
+  useEffect(() => {
+    const handleResize = () => {
+      setLegendPosition(window.innerWidth < 640 ? "top" : "left");
+      setIsMobile(window.innerWidth < 640);
+    };
+    window.addEventListener("resize", handleResize);
+    // Set inicial
+    handleResize();
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
   if (error) {
     return (
       <div className="flex items-center justify-center h-64 bg-red-50 rounded-lg">
@@ -255,7 +273,7 @@ const Graph = ({ data: initialData, fileName, className }: GraphProps) => {
       </div>
     );
   }
-  console.log("chartData", JSON.stringify(initialData, null, 2));
+
   return (
     <div
       className={cn(
@@ -263,22 +281,35 @@ const Graph = ({ data: initialData, fileName, className }: GraphProps) => {
         className
       )}
     >
+      {/* Menú de configuración (solo en desktop/tablet) */}
+      {isMobile && (
+        <MenuConfigMobile
+          axisConfig={axisConfig}
+          handleAxisChange={handleAxisChange}
+          colorConfig={colorConfig}
+          handleColorChange={handleColorChange}
+          fileName={fileName}
+          plotData={plotData}
+          defaultColors={defaultColors}
+        />
+      )}
       {/* Gráfica */}
       <div className="flex-1 flex items-stretch">
         <div className="w-full h-full min-h-[500px]">
           <Scatter data={chartData} options={options} height={500} />
         </div>
+        {!isMobile && (
+          <MenuConfig
+            axisConfig={axisConfig}
+            handleAxisChange={handleAxisChange}
+            colorConfig={colorConfig}
+            handleColorChange={handleColorChange}
+            fileName={fileName}
+            plotData={plotData}
+            defaultColors={defaultColors}
+          />
+        )}
       </div>
-      {/* Menú de configuración */}
-      <MenuConfig
-        axisConfig={axisConfig}
-        handleAxisChange={handleAxisChange}
-        colorConfig={colorConfig}
-        handleColorChange={handleColorChange}
-        fileName={fileName}
-        plotData={plotData}
-        defaultColors={defaultColors}
-      />
     </div>
   );
 };
