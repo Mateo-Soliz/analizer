@@ -1,6 +1,5 @@
 "use client";
 
-
 import { RegisterForm } from "@/components/forms/register/register-form";
 import RegisterFormContainer from "@/components/forms/register/register-form-container";
 import { Button } from "@/components/primitives/button";
@@ -13,6 +12,8 @@ import {
 } from "@/components/primitives/card";
 import { Separator } from "@/components/primitives/separator";
 import { useGoogleSignIn } from "@/hooks/useGoogleSignIn";
+import { useUserStore } from "@/lib/client-only/stores/user/user.store";
+import { createUser } from "@/lib/server-only/user/user.service";
 import { Mail } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -24,7 +25,7 @@ export default function RegisterPage() {
     error: googleError,
   } = useGoogleSignIn();
   const router = useRouter();
-
+  const { setUser } = useUserStore();
   const handleGoogleSignUp = async () => {
     const user = await signInWithGoogle();
     if (user) {
@@ -35,6 +36,15 @@ export default function RegisterPage() {
           Authorization: `Bearer ${idToken}`,
         },
       });
+      const uid = user.uid;
+      const newUser = await createUser({
+        uid: user.uid,
+        name: user.displayName || "",
+        email: user.email || "",
+        verified: false,
+        role: "user",
+      });
+      setUser(newUser);
       router.push("/overview");
     }
   };

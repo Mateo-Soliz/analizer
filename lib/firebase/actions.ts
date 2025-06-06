@@ -38,7 +38,7 @@ export const registerWithEmail = async (
       await signOutFirebase();
       return null;
     }
-    return res.status;
+    return { user: userCredential.user, status: res.status };
   } catch (error: any) {
     console.error(error);
     return error.code;
@@ -66,7 +66,7 @@ export const loginWithEmail = async (
       await signOutFirebase();
       return null;
     }
-    return res.status;
+    return { user: userCredential.user, status: res.status };
   } catch (error: any) {
     console.error(error);
     return error.code;

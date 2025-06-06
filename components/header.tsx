@@ -14,7 +14,7 @@ const navItems = [
   { label: "Registrarse", href: "/register" },
 ];
 
-export default function Header({ isLoggedIn }: { isLoggedIn: boolean }) {
+export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const pathname = usePathname();
 
@@ -31,9 +31,7 @@ export default function Header({ isLoggedIn }: { isLoggedIn: boolean }) {
     }
   );
 
-  if (isLoggedIn) {
-    return null;
-  }
+
   return (
     <header className="bg-white shadow-md border-b">
       <div className="container mx-auto px-4">
