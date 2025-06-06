@@ -13,7 +13,7 @@ import {
 import { Separator } from "@/components/primitives/separator";
 import { useGoogleSignIn } from "@/hooks/useGoogleSignIn";
 import { useUserStore } from "@/lib/client-only/stores/user/user.store";
-import { getUser } from "@/lib/server-only/user/user.service";
+import { createUser, getUser } from "@/lib/server-only/user/user.service";
 import { Mail } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -21,6 +21,7 @@ import { useRouter } from "next/navigation";
 export default function LoginPage() {
   const { signInWithGoogle, isLoading: isGoogleLoading } = useGoogleSignIn();
   const router = useRouter();
+
   const { setUser } = useUserStore();
   const handleGoogleSignIp = async () => {
     const user = await signInWithGoogle();
@@ -33,7 +34,18 @@ export default function LoginPage() {
         },
       });
       const userData = await getUser(user.uid);
-      setUser(userData);
+      if (!userData) {
+        const newUser = await createUser({
+          uid: user.uid,
+          name: user.displayName || "",
+          email: user.email || "",
+          verified: false,
+          role: "user",
+        });
+        setUser(newUser);
+      } else {
+        setUser(userData);
+      }
       router.push("/overview");
     }
   };

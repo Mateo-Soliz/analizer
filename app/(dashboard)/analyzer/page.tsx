@@ -106,6 +106,7 @@ const AnalyzerPage = () => {
         throw new Error("El usuario no tiene un id definido. No se puede guardar el dataset.");
       }
       // @ts-ignore
+      console.log("user", user);
       const result = await saveDataSet({
         owner: user.id,
         name: data.title,

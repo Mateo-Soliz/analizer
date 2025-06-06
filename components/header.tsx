@@ -54,7 +54,6 @@ export default function Header() {
             </button>
           </div>
         </div>
-
         <MobileMenu
           isOpen={isMenuOpen}
           navItems={filteredNavItems}
