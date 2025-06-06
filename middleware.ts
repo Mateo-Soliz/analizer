@@ -11,6 +11,8 @@ export async function middleware(request: NextRequest) {
       ? "http://localhost:3000"
       : request.nextUrl.origin;
 
+  const pathname = request.nextUrl.pathname;
+
   try {
     const res = await fetch(`${apiUrl}/api/login`, {
       method: "GET",
@@ -21,27 +23,29 @@ export async function middleware(request: NextRequest) {
       },
     });
 
-    const pathname = request.nextUrl.pathname;
+    const isAuthenticated = res.status === 200;
 
-    if (res.status !== 200) {
-      if (["/", "/login", "/register", "/analyze"].includes(pathname)) {
-        return NextResponse.next();
-      }
+    // Si está autenticado y va a login o register, redirige a overview
+    if (isAuthenticated && ["/login", "/register", "/"].includes(pathname)) {
+      return NextResponse.redirect(new URL("/overview", request.url));
+    }
+
+    // Si NO está autenticado y va a una ruta protegida, redirige a home
+    const publicRoutes = ["/", "/login", "/register", "/analyze"];
+    if (!isAuthenticated && !publicRoutes.includes(pathname)) {
       return NextResponse.redirect(new URL("/", request.url));
     }
 
-    if (["/", "/login", "/register"].includes(pathname)) {
-      return NextResponse.redirect(new URL("/ch/conversations", request.url));
-    }
-
+    // Permite el acceso en los demás casos
     return NextResponse.next();
   } catch (error) {
+    console.log("error", error);
     return NextResponse.redirect(new URL("/", request.url));
   }
 }
 
 export const config = {
   matcher: [
-    "/((?!api|_next/|favicon.ico|site.webmanifest|ingest|.well-known|login|register|analyze|checkins|\\?action=).*)",
+    "/((?!api|_next/|favicon.ico|site.webmanifest|ingest|login|register|analyze|checkins|\\?action=).*)",
   ],
 };
