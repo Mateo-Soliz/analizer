@@ -4,6 +4,7 @@ import AnalyzeIntro from "@/components/AnalyzeIntro";
 import FileDropZone from "@/components/FileDropZone";
 import Footer from "@/components/footer/footer";
 import Graph from "@/components/graph";
+import { useFileAnalysis } from "@/hooks/useFileAnalysis";
 import React, { useState } from "react";
 
 interface CircadianGroupResult {
@@ -43,14 +44,10 @@ interface PlotData {
 
 export default function AnalyzePage() {
   const [plotData, setPlotData] = useState<PlotData | null>(null);
+  const { analyzeFile, isLoading, error, uploadProgress } = useFileAnalysis();
+
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [fileName, setFileName] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [uploadProgress, setUploadProgress] = useState<{
-    step: "upload" | "analysis" | null;
-    message: string;
-  }>({ step: null, message: "" });
 
   const validateExcelFile = (file: File): boolean => {
     // Validar extensión
@@ -60,14 +57,12 @@ export default function AnalyzePage() {
       .slice(file.name.lastIndexOf("."));
 
     if (!validExtensions.includes(fileExtension)) {
-      setError("El archivo debe ser un Excel (.xlsx o .xls)");
       return false;
     }
 
     // Validar tamaño (por ejemplo, máximo 10MB)
     const maxSize = 10 * 1024 * 1024; // 10MB en bytes
     if (file.size > maxSize) {
-      setError("El archivo es demasiado grande. Tamaño máximo: 10MB");
       return false;
     }
 
@@ -80,7 +75,6 @@ export default function AnalyzePage() {
       if (validateExcelFile(file)) {
         setSelectedFile(file);
         setFileName(file.name);
-        setError(null);
       } else {
         e.target.value = ""; // Limpiar el input
         setSelectedFile(null);
@@ -89,77 +83,15 @@ export default function AnalyzePage() {
     }
   };
 
-  const handleProcess = async () => {
+  const handleProcessData = async () => {
     if (!selectedFile) {
-      setError("Por favor, selecciona un archivo primero");
       return;
     }
-
-    setIsLoading(true);
-    setError(null);
-    setUploadProgress({ step: "upload", message: "Subiendo archivo..." });
-
     try {
-      // 1. Subir el archivo
-      const formData = new FormData();
-      formData.append("file", selectedFile);
-
-      const uploadResponse = await fetch("/api/upload", {
-        method: "POST",
-        body: formData,
-      });
-      console.log("uploadResponse", JSON.stringify(uploadResponse, null, 2));
-      const uploadData = await uploadResponse.json();
-
-      if (!uploadResponse.ok) {
-        throw new Error(uploadData.error || "Error al subir el archivo");
-      }
-
-      // Validar estructura de datos recibida
-      if (
-        !uploadData.data ||
-        !uploadData.data.timePoints ||
-        !uploadData.data.groups ||
-        !uploadData.data.values
-      ) {
-        throw new Error("El archivo no tiene el formato esperado");
-      }
-
-      setUploadProgress({ step: "analysis", message: "Analizando datos..." });
-
-      // 2. Analizar los datos
-      const analyzeResponse = await fetch("/api/analyze", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(uploadData.data),
-      });
-
-      const analysisResults = await analyzeResponse.json();
-
-      if (!analyzeResponse.ok) {
-        throw new Error(analysisResults.error || "Error al analizar los datos");
-      }
-
-      // Validar resultados del análisis
-      if (
-        !analysisResults.circadian_analysis ||
-        !analysisResults.mann_whitney_tests
-      ) {
-        throw new Error(
-          "Los resultados del análisis no tienen el formato esperado"
-        );
-      }
-
-      // 4. Redirigir a la página de resultados
-      setPlotData(analysisResults.plot_data as PlotData);
+      const results = await analyzeFile(selectedFile);
+      setPlotData(results.plot_data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error desconocido");
       console.error("Error en el proceso:", err);
-    } finally {
-      setIsLoading(false);
-      setUploadProgress({ step: null, message: "" });
     }
   };
 
@@ -190,7 +122,7 @@ export default function AnalyzePage() {
           fileName={fileName}
           selectedFile={selectedFile}
           handleFileChange={handleFileChange}
-          handleProcess={handleProcess}
+          handleProcess={handleProcessData}
           isLoading={isLoading}
         />
 

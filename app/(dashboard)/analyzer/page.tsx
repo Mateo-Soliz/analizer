@@ -9,17 +9,14 @@ import {
   CardTitle,
 } from "@/components/primitives/card";
 import { Input } from "@/components/primitives/input";
+import { useFileAnalysis } from "@/hooks/useFileAnalysis";
 import { Badge, CheckCircle, FileText, Upload } from "lucide-react";
 import { useState } from "react";
 
 const AnalyzerPage = () => {
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [uploadProgress, setUploadProgress] = useState<{
-    step: "upload" | "analysis" | null;
-    message: string;
-  }>({ step: null, message: "" });
+  const { analyzeFile, isLoading, error, uploadProgress } = useFileAnalysis();
+
   const [plotData, setPlotData] = useState<any>(null);
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -42,73 +39,13 @@ const AnalyzerPage = () => {
 
   const handleProcessData = async () => {
     if (!uploadedFile) {
-      setError("Por favor, selecciona un archivo primero");
       return;
     }
-
-    setIsLoading(true);
-    setError(null);
-    setUploadProgress({ step: "upload", message: "Subiendo archivo..." });
-
     try {
-      // 1. Subir el archivo
-      const formData = new FormData();
-      formData.append("file", uploadedFile);
-
-      const uploadResponse = await fetch("/api/upload", {
-        method: "POST",
-        body: formData,
-      });
-      const uploadData = await uploadResponse.json();
-
-      if (!uploadResponse.ok) {
-        throw new Error(uploadData.error || "Error al subir el archivo");
-      }
-
-      // Validar estructura de datos recibida
-      if (
-        !uploadData.data ||
-        !uploadData.data.timePoints ||
-        !uploadData.data.groups ||
-        !uploadData.data.values
-      ) {
-        throw new Error("El archivo no tiene el formato esperado");
-      }
-
-      setUploadProgress({ step: "analysis", message: "Analizando datos..." });
-
-      // 2. Analizar los datos
-      const analyzeResponse = await fetch("/api/analyze", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(uploadData.data),
-      });
-
-      const analysisResults = await analyzeResponse.json();
-
-      if (!analyzeResponse.ok) {
-        throw new Error(analysisResults.error || "Error al analizar los datos");
-      }
-
-      // Validar resultados del análisis
-      if (
-        !analysisResults.circadian_analysis ||
-        !analysisResults.mann_whitney_tests
-      ) {
-        throw new Error(
-          "Los resultados del análisis no tienen el formato esperado"
-        );
-      }
-      setPlotData(analysisResults.plot_data);
-      setUploadProgress({ step: null, message: "¡Análisis completado!" });
+      const results = await analyzeFile(uploadedFile);
+      setPlotData(results.plot_data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error desconocido");
       console.error("Error en el proceso:", err);
-    } finally {
-      setIsLoading(false);
-      setUploadProgress({ step: null, message: "" });
     }
   };
 
@@ -224,7 +161,11 @@ const AnalyzerPage = () => {
         </CardContent>
       </Card>
       {plotData && (
-        <Graph data={plotData} fileName={uploadedFile?.name || ""} className="max-w-7xl max-h-[700px]"  />
+        <Graph
+          data={plotData}
+          fileName={uploadedFile?.name || ""}
+          className="max-w-7xl max-h-[700px]"
+        />
       )}
     </div>
   );
